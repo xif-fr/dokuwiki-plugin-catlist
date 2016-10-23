@@ -1,0 +1,35 @@
+/**
+ * style.css for Plugin catlist
+ * 
+ * @license    GPL 2 (http://www.gnu.org/licenses/gpl.html)
+ * @author     Félix Faisant
+ *
+ */
+
+strong.li {
+	font-weight: bold !important;
+}
+
+.catlist_addpage * {
+	font-size: 10px !important;
+	color: __text__;
+}
+
+.catlist_addpage button {
+	margin: 0 !important;
+	padding: 1px !important;
+	display: inline;
+}
+
+button.catlist_expand {
+	border: none;
+	background: none;
+	background-image: url(images/expand.png);
+	background-repeat: no-repeat;
+	width: 10px;
+	height: 10px;
+}
+
+button.catlist_retract {
+	background-image: url(images/retract.png) !important;
+}
