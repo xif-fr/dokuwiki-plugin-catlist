@@ -22,6 +22,14 @@ define('CATLIST_NSLINK_AUTO', 0);
 define('CATLIST_NSLINK_NONE', 1);
 define('CATLIST_NSLINK_FORCE', 2);
 
+define('CATLIST_NSLINK_AUTO', 0);
+define('CATLIST_NSLINK_NONE', 1);
+define('CATLIST_NSLINK_FORCE', 2);
+
+define('CATLIST_INDEX_START', 0);
+define('CATLIST_INDEX_OUTSIDE', 1);
+define('CATLIST_INDEX_INSIDE', 2);
+
 if (!defined('SCANDIR_SORT_NONE')) {
 	define('SCANDIR_SORT_NONE', 0);
 	define('SCANDIR_SORT_ASCENDING', 0);
@@ -42,6 +50,7 @@ class syntax_plugin_catlist extends DokuWiki_Syntax_Plugin {
 		return 'substition';
 	}
 	
+	/*********************************************************************************************/
 	/************************************ <catlist> directive ************************************/
 	
 	function _checkOption(&$match, $option, &$varAffected, $valIfFound){
@@ -58,99 +67,105 @@ class syntax_plugin_catlist extends DokuWiki_Syntax_Plugin {
 	}
 	
 	function handle ($match, $state, $pos, Doku_Handler $handler) {
+		global $conf;
 
 		$_default_sort_map = array("none" => SCANDIR_SORT_NONE,
 		                           "ascending" => SCANDIR_SORT_ASCENDING,
 		                           "descending" => SCANDIR_SORT_DESCENDING);
+		$_index_priority_map = array("start" => CATLIST_INDEX_START,
+		                             "outside" => CATLIST_INDEX_OUTSIDE,
+		                             "inside" => CATLIST_INDEX_INSIDE);
 
-		$return = array('displayType' => CATLIST_DISPLAY_LIST, 'nsInBold' => true, 'expand' => 6,
-		                'exclupage' => array(), 'excluns' => array(), 'exclunsall' => array(), 'exclunspages' => array(), 'exclunsns' => array(),
-		                'exclutype' => 'id', 
-		                'createPageButtonNs' => true, 'createPageButtonSubs' => false, 
-		                'head' => true, 'headTitle' => NULL, 'smallHead' => false, 'linkStartHead' => true, 'hn' => 'h1',
-		                'NsHeadTitle' => true, 'nsLinks' => CATLIST_NSLINK_AUTO,
-		                'wantedNS' => '', 'safe' => true,
-		                'columns' => 0,
-		                'scandir_sort' => $_default_sort_map[$this->getConf('default_sort')],
-		                'startpages_outside' => (boolean)$this->getConf('startpages_outside') );
+		$data = array('displayType' => CATLIST_DISPLAY_LIST, 'nsInBold' => true, 'expand' => 6,
+		              'exclupage' => array(), 'excluns' => array(), 'exclunsall' => array(), 'exclunspages' => array(), 'exclunsns' => array(),
+		              'exclutype' => 'id', 
+		              'createPageButtonNs' => true, 'createPageButtonSubs' => false, 
+		              'head' => true, 'headTitle' => NULL, 'smallHead' => false, 'linkStartHead' => true, 'hn' => 'h1',
+		              'NsHeadTitle' => true, 'nsLinks' => CATLIST_NSLINK_AUTO,
+		              'columns' => 0,
+		              'scandir_sort' => $_default_sort_map[$this->getConf('default_sort')],
+		              'hide_index' => (boolean)$this->getConf('hide_index'),
+		              'index_priority' => array() );
 
+		$index_priority = explode(',', $this->getConf('index_priority'));
+		foreach ($index_priority as $index_type) {
+			if (!array_key_exists($index_type, $_index_priority_map)) {
+				msg("catlist: invalid index type in index_priority", -1);
+				return FALSE;
+			}
+			$data['index_priority'][] = $_index_priority_map[$index_type];
+		}
 		$match = utf8_substr($match, 9, -1).' ';
 		
 		// Display options
-		$this->_checkOption($match, "displayList", $return['displayType'], CATLIST_DISPLAY_LIST);
-		$this->_checkOption($match, "displayLine", $return['displayType'], CATLIST_DISPLAY_LINE);
-		$this->_checkOption($match, "noNSInBold", $return['nsInBold'], false);
+		$this->_checkOption($match, "displayList", $data['displayType'], CATLIST_DISPLAY_LIST);
+		$this->_checkOption($match, "displayLine", $data['displayType'], CATLIST_DISPLAY_LINE);
+		$this->_checkOption($match, "noNSInBold", $data['nsInBold'], false);
 		if (preg_match("/-expandButton:([0-9]+)/i", $match, $found)) {
-			$return['expand'] = intval($found[1]);
+			$data['expand'] = intval($found[1]);
 			$match = str_replace($found[0], '', $match);
 		}
 		
 		// Namespace options
-		$this->_checkOption($match, "forceLinks", $return['nsLinks'], CATLIST_NSLINK_FORCE); // /!\ Deprecated
-		$this->_checkOptionParam($match, "nsLinks", $return['nsLinks'], array( "none" => CATLIST_NSLINK_NONE, 
+		$this->_checkOption($match, "forceLinks", $data['nsLinks'], CATLIST_NSLINK_FORCE); // /!\ Deprecated
+		$this->_checkOptionParam($match, "nsLinks", $data['nsLinks'], array( "none" => CATLIST_NSLINK_NONE, 
 		                                                                       "auto" => CATLIST_NSLINK_AUTO, 
 		                                                                       "force" => CATLIST_NSLINK_FORCE ));
-		$this->_checkOption($match, "noNSHeadTitle", $return['NsHeadTitle'], false);
-		if ($return['NsHeadTitle'] == false) 
-			$return['nsLinks'] = CATLIST_NSLINK_NONE;
+		$this->_checkOption($match, "noNSHeadTitle", $data['NsHeadTitle'], false);
+		if ($data['NsHeadTitle'] == false) 
+			$data['nsLinks'] = CATLIST_NSLINK_NONE;
 
 		// Exclude options
 		for ($found; preg_match("/-(exclu(page|ns|nsall|nspages|nsns)):\"([^\\/\"]+)\" /i", $match, $found); ) {
-			$return[strtolower($found[1])][] = $found[3];
+			$data[strtolower($found[1])][] = $found[3];
 			$match = str_replace($found[0], '', $match);
 		}
 		for ($found; preg_match("/-(exclu(page|ns|nsall|nspages|nsns)) /i", $match, $found); ) {
-			$return[strtolower($found[1])] = true;
+			$data[strtolower($found[1])] = true;
 			$match = str_replace($found[0], '', $match);
 		}
 		
 		// Exclude type (exclude based on id, name, or title)
-		$this->_checkOption($match, "excludeOnID", $return['exclutype'], 'id');
-		$this->_checkOption($match, "excludeOnName", $return['exclutype'], 'name');
-		$this->_checkOption($match, "excludeOnTitle", $return['exclutype'], 'title');
+		$this->_checkOption($match, "excludeOnID", $data['exclutype'], 'id');
+		$this->_checkOption($match, "excludeOnName", $data['exclutype'], 'name');
+		$this->_checkOption($match, "excludeOnTitle", $data['exclutype'], 'title');
 		
 		// Max depth
 		if (preg_match("/-maxDepth:([0-9]+)/i", $match, $found)) {
-			$return['maxdepth'] = intval($found[1]);
+			$data['maxdepth'] = intval($found[1]);
 			$match = str_replace($found[0], '', $match);
 		} else {
-			$return['maxdepth'] = 0;
+			$data['maxdepth'] = 0;
 		}
 
 		// Columns
 		if (preg_match("/-columns:([0-9]+)/i", $match, $found)) {
-			$return['columns'] = intval($found[1]);
+			$data['columns'] = intval($found[1]);
 			$match = str_replace($found[0], '', $match);
 		} else {
-			$return['columns'] = 0;
+			$data['columns'] = 0;
 		}
 
 		// Head options
-		$this->_checkOption($match, "noHead", $return['head'], false);
-		$this->_checkOption($match, "smallHead", $return['smallHead'], true);
-		$this->_checkOption($match, "noLinkStartHead", $return['linkStartHead'], false);
+		$this->_checkOption($match, "noHead", $data['head'], false);
+		$this->_checkOption($match, "smallHead", $data['smallHead'], true);
+		$this->_checkOption($match, "noLinkStartHead", $data['linkStartHead'], false);
 		if (preg_match("/-(h[1-5])/i", $match, $found)) {
-			$return['hn'] = $found[1];
+			$data['hn'] = $found[1];
 			$match = str_replace($found[0], '', $match);
 		}
 		if (preg_match("/-titleHead:\"([^\"]*)\"/i", $match, $found)) {
-			$return['headTitle'] = $found[1];
+			$data['headTitle'] = $found[1];
 			$match = str_replace($found[0], '', $match);
 		}
 		
 		// Create page button options
-		$this->_checkOption($match, "noAddPageButton", $return['createPageButtonNs'], false);
-		$this->_checkOption($match, "addPageButtonEach", $return['createPageButtonSubs'], true);
-		$createPageButtonSubsOnly = false;
-		$this->_checkOption($match, "addPageButtonSubs", $createPageButtonSubsOnly, true);
-		if ($createPageButtonSubsOnly) {
-			$return['createPageButtonSubs'] = true;
-			$return['createPageButtonNs'] = false;
-		}
+		$this->_checkOption($match, "noAddPageButton", $data['createPageButtonNs'], false);
+		$this->_checkOption($match, "addPageButtonEach", $data['createPageButtonSubs'], true);
 		
 		// Sorting options
-		$this->_checkOption($match, "sortAscending", $return['scandir_sort'], SCANDIR_SORT_ASCENDING);
-		$this->_checkOption($match, "sortDescending", $return['scandir_sort'], SCANDIR_SORT_DESCENDING);
+		$this->_checkOption($match, "sortAscending", $data['scandir_sort'], SCANDIR_SORT_ASCENDING);
+		$this->_checkOption($match, "sortDescending", $data['scandir_sort'], SCANDIR_SORT_DESCENDING);
 		
 		// Remove other options and warn about
 		for ($found; preg_match("/ (-.*)/", $match, $found); ) {
@@ -178,16 +193,15 @@ class syntax_plugin_catlist extends DokuWiki_Syntax_Plugin {
 		if ($split[0] == '..') {
 			// Path would be outside the 'pages' directory
 			msg($this->getLang('outofpages'), -1);
-			$return['safe'] = false;
+			return FALSE;
 		}
-		$cleanNs = implode(':', $split);
-		$return['wantedNS'] = $cleanNs;
-		
-		return $return;
+		$data['ns'] = implode(':', $split);
+		return $data;
 	}
-	
+
+	/**************************************************************************************/
 	/************************************ Tree walking ************************************/
-	
+
 	function _isExcluded ($item, $exclutype, $arrayRegex) {
 		if ($arrayRegex === true) return true;
 		global $conf;
@@ -199,19 +213,115 @@ class syntax_plugin_catlist extends DokuWiki_Syntax_Plugin {
 		}
 		return false;
 	}
-	
-	function render ($mode, Doku_Renderer $renderer, $data) {
+
+	function _getStartPage ($index_priority, $parid, $parpath, $name, $force, &$exists) {
+		$exists = FALSE;
+		if ($parid != '') $parid .= ':';
 		global $conf;
-		
-		if (!$data['safe']) return FALSE;
-		$ns = $data['wantedNS'];
+		$index_path_map = array( CATLIST_INDEX_START => $parpath.'/'.$name.'/'.$conf['start'].'.txt',
+		                         CATLIST_INDEX_OUTSIDE => $parpath.'/'.$name.'.txt',
+		                         CATLIST_INDEX_INSIDE => $parpath.'/'.$name.'/'.$name.'.txt' );
+		$index_id_map = array( CATLIST_INDEX_START => $parid .$name.':'.$conf['start'],
+		                       CATLIST_INDEX_OUTSIDE => $parid .$name,
+		                       CATLIST_INDEX_INSIDE => $parid .$name.':'.$name );
+		foreach ($index_priority as $index_type) {
+			if (is_file($index_path_map[$index_type])) {
+				$exists = TRUE;
+				return $index_id_map[$index_type];
+			}
+		}
+		if ($force && isset($index_priority[0])) 
+			return $index_id_map[0];
+		else
+			return FALSE;
+	}
+
+	function _walk (&$data) {
+		global $conf;
+			// Prepare
+		$ns = $data['ns'];
 		$path = $conf['savedir'].'/pages/'.str_replace(':', '/', $ns);
+		if ($conf['fnencode'] == 'safe')
+			$path = SafeFn::encode($path);
 		if (!is_dir($path)) {
 			msg(sprintf($this->getLang('dontexist'), $ns), -1);
 			return FALSE;
 		}
-		
-		// Display headline
+			// Recursion
+		$data['tree'] = array();
+		$data['index_pages'] = array();
+		$this->_walk_recurse($data, $path, $ns, false, false, 1, $data['maxdepth'], $data['tree'], $data['index_pages']);
+		return TRUE;
+	}
+
+	function _walk_recurse (&$data, $path, $ns, $excluPages, $excluNS, $depth, $maxdepth, &$_TREE) {
+		$scanDirs = @scandir($path, $data['scandir_sort']);
+		if ($scanDirs === false) {
+			msg("catlist: can't open directory of namespace ".$ns, -1);
+			return;
+		}
+		foreach ($scanDirs as $file) {
+			if ($file[0] == '.' || $file[0] == '_') continue;
+			$name = utf8_decodeFN(str_replace('.txt', '', $file));
+			$id = ($ns == '') ? $name : $ns.':'.$name;
+			$item = array('id' => $id, 'name'  => $name, 'title' => NULL);
+				// It's a namespace
+			if (is_dir($path.'/'.$file)) {
+					// Index page of the namespace
+				$index_exists = FALSE;
+				$index_id = $this->_getStartPage($data['index_priority'], $ns, $path, $name, ($data['nsLinks']==CATLIST_NSLINK_FORCE), $index_exists);
+				if ($index_exists)
+					$data['index_pages'][] = $index_id;
+					// Exclusion
+				if ($excluNS) continue;
+				if ($this->_isExcluded($item, $data['exclutype'], $data['excluns'])) continue;
+					// Namespace
+				$item['title'] = ($index_exists && $data['NsHeadTitle']) ? p_get_first_heading($index_id, true) : $name;
+				$displayLink = ($index_exists && ($data['nsLinks']==CATLIST_NSLINK_AUTO)) || ($data['nsLinks']==CATLIST_NSLINK_FORCE);
+				$perms = auth_quickaclcheck($id.':*');
+				$displayLink = $displayLink && ($perms >= AUTH_READ);
+				$dispalyButton = $data['createPageButtonSubs'] && $perms >= AUTH_CREATE;
+					// Tree
+				$_TREE[$name] = array( 'title' => $item['title'],
+				                       'id' => $id,
+				                       'linkdisp' => $displayLink,
+				                       'linkid' => $index_id,
+				                       'buttonid' => ($dispalyButton ? $id.':' : NULL),
+				                       '_' => array() );
+					// Recursion if wanted
+				$okdepth = ($depth < $maxdepth) || ($maxdepth == 0);
+				if (!$this->_isExcluded($item, $data['exclutype'], $data['exclunsall']) && $perms >= AUTH_READ && $okdepth) {
+					$exclunspages = $this->_isExcluded($item, $data['exclutype'], $data['exclunspages']);
+					$exclunsns = $this->_isExcluded($item, $data['exclutype'], $data['exclunsns']);
+					$this->_walk_recurse($data, $path.'/'.$file, $id, $exclunspages, $exclunsns, $depth+1, $maxdepth, $_TREE[$name]['_']);
+				}
+			} else 
+				// It's a page
+			if (!$excluPages) {
+				if (substr($file, -4) != ".txt") continue;
+				if (auth_quickaclcheck($id) < AUTH_READ) continue;
+					// Page title
+				$title = p_get_first_heading($id, true);
+				if (!is_null($title)) $item['title'] = $title;
+					// Exclusion
+				if ($this->_isExcluded($item, $data['exclutype'], $data['exclupage'])) continue;
+					// Tree
+				$_TREE[$name] = $item;
+			}
+		}
+	}
+	
+	/***********************************************************************************/
+	/************************************ Rendering ************************************/
+
+	function render ($mode, Doku_Renderer $renderer, $data) {		
+		if (!is_array($data)) return FALSE;
+		$ns = $data['ns'];
+
+			// Walk namespace tree
+		$this->_walk($data);
+
+			// Display headline
 		if ($data['head']) {
 			$html_tag_small = ($data['nsInBold']) ? 'strong' : 'span';
 			$html_tag = ($data['smallHead']) ? $html_tag_small : $data['hn'];
@@ -228,7 +338,7 @@ class syntax_plugin_catlist extends DokuWiki_Syntax_Plugin {
 			$renderer->doc .= '</'.$html_tag.'>';
 		}
 		
-		// Recurse and display
+			// Recurse and display
 		$global_ul_attr = "";
 		if ($data['columns'] != 0) { 
 			$global_ul_attr = 'column-count: '.$data['columns'].';';
@@ -238,8 +348,8 @@ class syntax_plugin_catlist extends DokuWiki_Syntax_Plugin {
 			$global_ul_attr = 'class="catlist-nslist" ';
 		}
 		if ($data['displayType'] == CATLIST_DISPLAY_LIST) $renderer->doc .= '<ul '.$global_ul_attr.'>';
-		$this->_recurse($renderer, $data, $path, $ns, false, false, 1, $data['maxdepth']);
-		$perm_create = auth_quickaclcheck($id.':*') >= AUTH_CREATE;
+		$this->_recurse($renderer, $data, $data['tree']);
+		$perm_create = auth_quickaclcheck($ns.':*') >= AUTH_CREATE;
 		$ns_button = ($ns == '') ? '' : $ns.':';
 		if ($data['createPageButtonNs'] && $perm_create) $this->_displayAddPageButton($renderer, $ns_button, $data['displayType']);
 		if ($data['displayType'] == CATLIST_DISPLAY_LIST) $renderer->doc .= '</ul>';
@@ -247,97 +357,35 @@ class syntax_plugin_catlist extends DokuWiki_Syntax_Plugin {
 		return TRUE;
 	}
 	
-	function _startPageStatus (&$renderer, $id, $path, $name) {
-		if (!is_dir($path.'/'.$name)) 
-			return false;
-		global $conf;
-		if (is_file( $path.'/'.$name.'/'.$conf['start'].'.txt' )) 
-			return false;
-		if (is_file( $path.'/'.$name.'/'.$name.'.txt' )) 
-			return false;
-		if (!is_file( $path.'/'.$name.'.txt' )) 
-			return false;
-		return true;
-	}
-
-	function _recurse (&$renderer, $data, $path, $ns, $excluPages, $excluNS, $depth, $maxdepth) {
-		$mainPageId = $ns.':';
-		$mainPageExists = false;
-		resolve_pageid('', $mainPageId, $mainPageExists);
-		if (!$mainPageExists) $mainPageId = NULL;
-		$scanDirs = @scandir($path, $data['scandir_sort']);
-		if ($scanDirs === false) {
-			msg("catlist: can't open directory of namespace ".$ns, -1);
-			return;
-		}
-		foreach ($scanDirs as $file) {
-			if ($file[0] == '.' || $file[0] == '_') continue;
-			$name = utf8_decodeFN(str_replace('.txt', '', $file));
-			$id = ($ns == '') ? $name : $ns.':'.$name;
-			$item = array('id' => $id, 'name'  => $name, 'title' => NULL);
+	function _recurse (&$renderer, $data, $_TREE) {
+		foreach ($_TREE as $name => $item) {
+			if (isset($item['_'])) {
 				// It's a namespace
-			if (is_dir($path.'/'.$file)) {
-				if ($excluNS) continue;
-					// Start page of the ns
-				$startid = $id.':';
-				$startexist = false;
-				resolve_pageid('', $startid, $startexist);
-				$perms = auth_quickaclcheck($id.':*');
-					// Title
-				$item['title'] = ($startexist && $data['NsHeadTitle']) ? p_get_first_heading($startid, true) : $name;
-					// Exclusion
-				if ($this->_isExcluded($item, $data['exclutype'], $data['excluns'])) continue;
-					// Render ns begin
-				$displayLink = (($startexist && ($data['nsLinks']==CATLIST_NSLINK_AUTO)) || ($data['nsLinks']==CATLIST_NSLINK_FORCE)) && $perms >= AUTH_READ;
-				$this->_displayNSBegin($renderer, $item, $data['displayType'], $displayLink, $data['nsInBold'], $data['expand']);
-					// Recursion if wanted
-				$okdepth = ($depth < $maxdepth) || ($maxdepth == 0);
-				if (!$this->_isExcluded($item, $data['exclutype'], $data['exclunsall']) && $perms >= AUTH_READ && $okdepth) {
-					$exclunspages = $this->_isExcluded($item, $data['exclutype'], $data['exclunspages']);
-					$exclunsns = $this->_isExcluded($item, $data['exclutype'], $data['exclunsns']);
-					$this->_recurse($renderer, $data, $path.'/'.$file, $id, $exclunspages, $exclunsns, $depth+1, $maxdepth);
-				}
-					// Render ns end
-				$this->_displayNSEnd($renderer, $data['displayType'], ($data['createPageButtonSubs'] && $perms >= AUTH_CREATE) ? $id.':' : NULL);
-			} else 
+				$this->_displayNSBegin($renderer, $data, $item['title'], $item['linkdisp'], $item['linkid']);
+				$this->_recurse($renderer, $data, $item['_']);
+				$this->_displayNSEnd($renderer, $data['displayType'], $item['buttonid']);
+			} else { 
 				// It's a page
-			if (!$excluPages) {
-				if (substr($file, -4) != ".txt") continue;
-				if (auth_quickaclcheck($id) < AUTH_READ) continue;
-					// Page title
-				$title = p_get_first_heading($id, true);
-				if (!is_null($title)) $item['title'] = $title;
-					// Exclusion
-				if ($this->_isExcluded($item, $data['exclutype'], $data['exclupage'])) continue;
-				if ($id == $mainPageId) continue;
-				if ($data['startpages_outside'] && $this->_startPageStatus($renderer, $id, $path, $name)) continue;
-					// Render page
+				if ($data['hide_index'] && in_array($item['id'], $data['index_pages'])) continue;
 				$this->_displayPage($renderer, $item, $data['displayType']);
 			}
 		}
 	}
-	
-	/************************************ Rendering ************************************/
-	
-	function _displayNSBegin (&$renderer, $item, $displayType, $displayLink, $inBold, $retract = false) {
-		if ($displayType == CATLIST_DISPLAY_LIST) {
-			$warper_ns = ($inBold) ? 'strong' : 'span';
 
-		/*	$doc_classlist = 'li catlist-nshead';
-			if (!$displayLink) $doc_classlist .= ' catlist-nsnolink';
-			$renderer->doc .= '<li class="catlist-ns"><'.$warper_ns.' class="' . $doc_classlist . '">';*/
-
+	function _displayNSBegin (&$renderer, $data, $title, $displayLink, $idLink) {
+		if ($data['displayType'] == CATLIST_DISPLAY_LIST) {
+			$warper_ns = ($data['nsInBold']) ? 'strong' : 'span';
 			$renderer->doc .= '<li class="catlist-ns"><'.$warper_ns.' class="li catlist-nshead">';
-			if ($displayLink) $renderer->internallink(':'.$item['id'].':', $item['title']); // Automatically handles the case of pages relevant of startpages_outside (redirects foo:bar: to foo:bar), only if foo:bar:<start> doesn't exist (which is what is wanted)
-			else $renderer->doc .= htmlspecialchars($item['title']);
+			if ($displayLink) $renderer->internallink($idLink, $title);
+			else $renderer->doc .= htmlspecialchars($title);
 			$renderer->doc .= '</'.$warper_ns.'>';
-			/*if ($retract != 0) $renderer->doc .= ' <button catlist_hide="5"></button>';*/
 			$renderer->doc .= '<ul class="catlist-nslist">';
-		} else if ($displayType == CATLIST_DISPLAY_LINE) {
-			if ($inBold) $renderer->doc .= '<strong>';
-			if ($displayLink) $renderer->internallink(':'.$item['id'].':', $item['title']);
-			else $renderer->doc .= htmlspecialchars($item['title']);
-			if ($inBold) $renderer->doc .= '</strong>';
+		} 
+		else if ($data['displayType'] == CATLIST_DISPLAY_LINE) {
+			if ($data['nsInBold']) $renderer->doc .= '<strong>';
+			if ($displayLink) $renderer->internallink($idLink, $title);
+			else $renderer->doc .= htmlspecialchars($title);
+			if ($data['nsInBold']) $renderer->doc .= '</strong>';
 			$renderer->doc .= '[ ';
 		}
 	}

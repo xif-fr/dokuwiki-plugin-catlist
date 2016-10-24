@@ -1,4 +1,5 @@
 <?php
 
-$conf['startpages_outside'] = 1;
 $conf['default_sort'] = "none";
+$conf['hide_index'] = 1;
+$conf['index_priority'] = "start,outside";
