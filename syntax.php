@@ -247,9 +247,21 @@ class syntax_plugin_catlist extends DokuWiki_Syntax_Plugin {
 			msg(sprintf($this->getLang('dontexist'), $ns), -1);
 			return FALSE;
 		}
+			// Main page
+		$main = array( 'id' => $ns.':',
+			           'exist' => false,
+		               'title' => NULL );
+		resolve_pageid('', $main['id'], $main['exist']);
+		if ($data['headTitle'] !== NULL) 
+			$main['title'] = $data['headTitle'];
+		else {
+			if ($main['exist']) $main['title'] = p_get_first_heading($main['id'], true);
+			if (is_null($main['title'])) $main['title'] = end(explode(':', $ns));
+		}
+		$data['main'] = $main;
 			// Recursion
 		$data['tree'] = array();
-		$data['index_pages'] = array();
+		$data['index_pages'] = array( $main['id'] );
 		$this->_walk_recurse($data, $path, $ns, false, false, 1, $data['maxdepth'], $data['tree'], $data['index_pages']);
 		return TRUE;
 	}
@@ -282,18 +294,16 @@ class syntax_plugin_catlist extends DokuWiki_Syntax_Plugin {
 				$displayLink = $displayLink && ($perms >= AUTH_READ);
 				$dispalyButton = $data['createPageButtonSubs'] && $perms >= AUTH_CREATE;
 					// Tree
-				$_TREE[$name] = array( 'title' => $item['title'],
-				                       'id' => $id,
-				                       'linkdisp' => $displayLink,
-				                       'linkid' => $index_id,
-				                       'buttonid' => ($dispalyButton ? $id.':' : NULL),
-				                       '_' => array() );
+				$_TREE[$id.':'] = array( 'title' => $item['title'], 'id' => $id,
+				                         'linkdisp' => $displayLink, 'linkid' => $index_id,
+				                         'buttonid' => ($dispalyButton ? $id.':' : NULL),
+				                         '_' => array() );
 					// Recursion if wanted
 				$okdepth = ($depth < $maxdepth) || ($maxdepth == 0);
 				if (!$this->_isExcluded($item, $data['exclutype'], $data['exclunsall']) && $perms >= AUTH_READ && $okdepth) {
 					$exclunspages = $this->_isExcluded($item, $data['exclutype'], $data['exclunspages']);
 					$exclunsns = $this->_isExcluded($item, $data['exclutype'], $data['exclunsns']);
-					$this->_walk_recurse($data, $path.'/'.$file, $id, $exclunspages, $exclunsns, $depth+1, $maxdepth, $_TREE[$name]['_']);
+					$this->_walk_recurse($data, $path.'/'.$file, $id, $exclunspages, $exclunsns, $depth+1, $maxdepth, $_TREE[$id.':']['_']);
 				}
 			} else 
 				// It's a page
@@ -306,7 +316,7 @@ class syntax_plugin_catlist extends DokuWiki_Syntax_Plugin {
 					// Exclusion
 				if ($this->_isExcluded($item, $data['exclutype'], $data['exclupage'])) continue;
 					// Tree
-				$_TREE[$name] = $item;
+				$_TREE[$id] = $item;
 			}
 		}
 	}
@@ -326,15 +336,11 @@ class syntax_plugin_catlist extends DokuWiki_Syntax_Plugin {
 			$html_tag_small = ($data['nsInBold']) ? 'strong' : 'span';
 			$html_tag = ($data['smallHead']) ? $html_tag_small : $data['hn'];
 			$renderer->doc .= '<'.$html_tag.' class="catlist-head">';
-			$mainPageId = $ns.':';
-			$mainPageTitle = NULL;
-			resolve_pageid('', $mainPageId, $mainPageExist);
-			if ($mainPageExist) $mainPageTitle = p_get_first_heading($mainPageId, true);
-			if (is_null($mainPageTitle)) $mainPageTitle = end(explode(':', $ns));
-			if ($data['headTitle'] !== NULL) $mainPageTitle = $data['headTitle'];
-			if (($mainPageExist && $data['linkStartHead'] && !($data['nsLinks'] == CATLIST_NSLINK_NONE)) || ($data['nsLinks'] == CATLIST_NSLINK_FORCE)) 
-				$renderer->internallink(':'.$mainPageId, $mainPageTitle);
-			else $renderer->doc .= htmlspecialchars($mainPageTitle);
+			$main = $data['main'];
+			if (($main['exist'] && $data['linkStartHead'] && !($data['nsLinks']==CATLIST_NSLINK_NONE)) || ($data['nsLinks']==CATLIST_NSLINK_FORCE)) 
+				$renderer->internallink(':'.$main['id'], $main['title']);
+			else 
+				$renderer->doc .= htmlspecialchars($main['title']);
 			$renderer->doc .= '</'.$html_tag.'>';
 		}
 		
@@ -358,7 +364,7 @@ class syntax_plugin_catlist extends DokuWiki_Syntax_Plugin {
 	}
 	
 	function _recurse (&$renderer, $data, $_TREE) {
-		foreach ($_TREE as $name => $item) {
+		foreach ($_TREE as $item) {
 			if (isset($item['_'])) {
 				// It's a namespace
 				$this->_displayNSBegin($renderer, $data, $item['title'], $item['linkdisp'], $item['linkid']);
