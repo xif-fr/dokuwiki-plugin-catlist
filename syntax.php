@@ -289,22 +289,23 @@ class syntax_plugin_catlist extends DokuWiki_Syntax_Plugin {
 				if ($this->_isExcluded($item, $data['exclutype'], $data['excluns'])) continue;
 					// Namespace
 				$item['title'] = ($index_exists && $data['NsHeadTitle']) ? p_get_first_heading($index_id, true) : $name;
-				$displayLink = ($index_exists && ($data['nsLinks']==CATLIST_NSLINK_AUTO)) || ($data['nsLinks']==CATLIST_NSLINK_FORCE);
+				$item['linkdisp'] = ($index_exists && ($data['nsLinks']==CATLIST_NSLINK_AUTO)) || ($data['nsLinks']==CATLIST_NSLINK_FORCE);
 				$perms = auth_quickaclcheck($id.':*');
-				$displayLink = $displayLink && ($perms >= AUTH_READ);
+				$item['linkdisp'] = $item['linkdisp'] && ($perms >= AUTH_READ);
+				$item['linkid'] = $index_id;
+					// Button
 				$dispalyButton = $data['createPageButtonSubs'] && $perms >= AUTH_CREATE;
-					// Tree
-				$_TREE[$id.':'] = array( 'title' => $item['title'], 'id' => $id,
-				                         'linkdisp' => $displayLink, 'linkid' => $index_id,
-				                         'buttonid' => ($dispalyButton ? $id.':' : NULL),
-				                         '_' => array() );
+				$item['buttonid'] = $dispalyButton ? $id.':' : NULL;
 					// Recursion if wanted
 				$okdepth = ($depth < $maxdepth) || ($maxdepth == 0);
 				if (!$this->_isExcluded($item, $data['exclutype'], $data['exclunsall']) && $perms >= AUTH_READ && $okdepth) {
 					$exclunspages = $this->_isExcluded($item, $data['exclutype'], $data['exclunspages']);
 					$exclunsns = $this->_isExcluded($item, $data['exclutype'], $data['exclunsns']);
-					$this->_walk_recurse($data, $path.'/'.$file, $id, $exclunspages, $exclunsns, $depth+1, $maxdepth, $_TREE[$id.':']['_']);
+					$item['_'] = array();
+					$this->_walk_recurse($data, $path.'/'.$file, $id, $exclunspages, $exclunsns, $depth+1, $maxdepth, $item['_']);
 				}
+					// Tree
+				$_TREE[] = $item;
 			} else 
 				// It's a page
 			if (!$excluPages) {
@@ -316,7 +317,7 @@ class syntax_plugin_catlist extends DokuWiki_Syntax_Plugin {
 					// Exclusion
 				if ($this->_isExcluded($item, $data['exclutype'], $data['exclupage'])) continue;
 					// Tree
-				$_TREE[$id] = $item;
+				$_TREE[] = $item;
 			}
 		}
 	}
