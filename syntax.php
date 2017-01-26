@@ -22,10 +22,6 @@ define('CATLIST_NSLINK_AUTO', 0);
 define('CATLIST_NSLINK_NONE', 1);
 define('CATLIST_NSLINK_FORCE', 2);
 
-define('CATLIST_NSLINK_AUTO', 0);
-define('CATLIST_NSLINK_NONE', 1);
-define('CATLIST_NSLINK_FORCE', 2);
-
 define('CATLIST_INDEX_START', 0);
 define('CATLIST_INDEX_OUTSIDE', 1);
 define('CATLIST_INDEX_INSIDE', 2);
@@ -82,10 +78,11 @@ class syntax_plugin_catlist extends DokuWiki_Syntax_Plugin {
 		              'createPageButtonNs' => true, 'createPageButtonSubs' => false, 
 		              'head' => true, 'headTitle' => NULL, 'smallHead' => false, 'linkStartHead' => true, 'hn' => 'h1',
 		              'NsHeadTitle' => true, 'nsLinks' => CATLIST_NSLINK_AUTO,
-		              'columns' => 0,
+		              'columns' => 0, 'maxdepth' => 0,
 		              'scandir_sort' => $_default_sort_map[$this->getConf('default_sort')],
 		              'hide_index' => (boolean)$this->getConf('hide_index'),
-		              'index_priority' => array() );
+		              'index_priority' => array(),
+		              'nocache' => (boolean)$this->getConf('nocache') );
 
 		$index_priority = explode(',', $this->getConf('index_priority'));
 		foreach ($index_priority as $index_type) {
@@ -109,8 +106,8 @@ class syntax_plugin_catlist extends DokuWiki_Syntax_Plugin {
 		// Namespace options
 		$this->_checkOption($match, "forceLinks", $data['nsLinks'], CATLIST_NSLINK_FORCE); // /!\ Deprecated
 		$this->_checkOptionParam($match, "nsLinks", $data['nsLinks'], array( "none" => CATLIST_NSLINK_NONE, 
-		                                                                       "auto" => CATLIST_NSLINK_AUTO, 
-		                                                                       "force" => CATLIST_NSLINK_FORCE ));
+		                                                                     "auto" => CATLIST_NSLINK_AUTO, 
+		                                                                     "force" => CATLIST_NSLINK_FORCE ));
 		$this->_checkOption($match, "noNSHeadTitle", $data['NsHeadTitle'], false);
 		if ($data['NsHeadTitle'] == false) 
 			$data['nsLinks'] = CATLIST_NSLINK_NONE;
@@ -134,16 +131,12 @@ class syntax_plugin_catlist extends DokuWiki_Syntax_Plugin {
 		if (preg_match("/-maxDepth:([0-9]+)/i", $match, $found)) {
 			$data['maxdepth'] = intval($found[1]);
 			$match = str_replace($found[0], '', $match);
-		} else {
-			$data['maxdepth'] = 0;
 		}
 
 		// Columns
 		if (preg_match("/-columns:([0-9]+)/i", $match, $found)) {
 			$data['columns'] = intval($found[1]);
 			$match = str_replace($found[0], '', $match);
-		} else {
-			$data['columns'] = 0;
 		}
 
 		// Head options
@@ -249,7 +242,7 @@ class syntax_plugin_catlist extends DokuWiki_Syntax_Plugin {
 		}
 			// Main page
 		$main = array( 'id' => $ns.':',
-			           'exist' => false,
+		               'exist' => false,
 		               'title' => NULL );
 		resolve_pageid('', $main['id'], $main['exist']);
 		if ($data['headTitle'] !== NULL) 
@@ -297,11 +290,11 @@ class syntax_plugin_catlist extends DokuWiki_Syntax_Plugin {
 				$dispalyButton = $data['createPageButtonSubs'] && $perms >= AUTH_CREATE;
 				$item['buttonid'] = $dispalyButton ? $id.':' : NULL;
 					// Recursion if wanted
+				$item['_'] = array();
 				$okdepth = ($depth < $maxdepth) || ($maxdepth == 0);
 				if (!$this->_isExcluded($item, $data['exclutype'], $data['exclunsall']) && $perms >= AUTH_READ && $okdepth) {
 					$exclunspages = $this->_isExcluded($item, $data['exclutype'], $data['exclunspages']);
 					$exclunsns = $this->_isExcluded($item, $data['exclutype'], $data['exclunsns']);
-					$item['_'] = array();
 					$this->_walk_recurse($data, $path.'/'.$file, $id, $exclunspages, $exclunsns, $depth+1, $maxdepth, $item['_']);
 				}
 					// Tree
@@ -328,6 +321,10 @@ class syntax_plugin_catlist extends DokuWiki_Syntax_Plugin {
 	function render ($mode, Doku_Renderer $renderer, $data) {		
 		if (!is_array($data)) return FALSE;
 		$ns = $data['ns'];
+
+			// Disabling cache
+		if ($data['nocache']) 
+			$renderer->nocache();
 
 			// Walk namespace tree
 		$this->_walk($data);
