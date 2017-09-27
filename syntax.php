@@ -283,16 +283,13 @@ class syntax_plugin_catlist extends DokuWiki_Syntax_Plugin {
 					// Namespace
 				$item['title'] = ($index_exists && $data['NsHeadTitle']) ? p_get_first_heading($index_id, true) : $name;
 				$item['linkdisp'] = ($index_exists && ($data['nsLinks']==CATLIST_NSLINK_AUTO)) || ($data['nsLinks']==CATLIST_NSLINK_FORCE);
-				$perms = auth_quickaclcheck($id.':*');
-				$item['linkdisp'] = $item['linkdisp'] && ($perms >= AUTH_READ);
 				$item['linkid'] = $index_id;
 					// Button
-				$dispalyButton = $data['createPageButtonSubs'] && $perms >= AUTH_CREATE;
-				$item['buttonid'] = $dispalyButton ? $id.':' : NULL;
+				$item['buttonid'] = $data['createPageButtonSubs'] ? $id.':' : NULL;
 					// Recursion if wanted
 				$item['_'] = array();
 				$okdepth = ($depth < $maxdepth) || ($maxdepth == 0);
-				if (!$this->_isExcluded($item, $data['exclutype'], $data['exclunsall']) && $perms >= AUTH_READ && $okdepth) {
+				if (!$this->_isExcluded($item, $data['exclutype'], $data['exclunsall']) && $okdepth) {
 					$exclunspages = $this->_isExcluded($item, $data['exclutype'], $data['exclunspages']);
 					$exclunsns = $this->_isExcluded($item, $data['exclutype'], $data['exclunsns']);
 					$this->_walk_recurse($data, $path.'/'.$file, $id, $exclunspages, $exclunsns, $depth+1, $maxdepth, $item['_']);
@@ -303,7 +300,6 @@ class syntax_plugin_catlist extends DokuWiki_Syntax_Plugin {
 				// It's a page
 			if (!$excluPages) {
 				if (substr($file, -4) != ".txt") continue;
-				if (auth_quickaclcheck($id) < AUTH_READ) continue;
 					// Page title
 				$title = p_get_first_heading($id, true);
 				if (!is_null($title)) $item['title'] = $title;
@@ -365,11 +361,16 @@ class syntax_plugin_catlist extends DokuWiki_Syntax_Plugin {
 		foreach ($_TREE as $item) {
 			if (isset($item['_'])) {
 				// It's a namespace
+				$perms = auth_quickaclcheck($item['id'].':*');
+				$item['linkdisp'] = $item['linkdisp'] && ($perms >= AUTH_READ);
+				$item['buttonid'] = ($perms >= AUTH_CREATE) ? $item['buttonid'] : NULL;
 				$this->_displayNSBegin($renderer, $data, $item['title'], $item['linkdisp'], $item['linkid']);
-				$this->_recurse($renderer, $data, $item['_']);
+				if ($perms >= AUTH_READ)
+					$this->_recurse($renderer, $data, $item['_']);
 				$this->_displayNSEnd($renderer, $data['displayType'], $item['buttonid']);
 			} else { 
 				// It's a page
+				if (auth_quickaclcheck($id) < AUTH_READ) continue;
 				if ($data['hide_index'] && in_array($item['id'], $data['index_pages'])) continue;
 				$this->_displayPage($renderer, $item, $data['displayType']);
 			}
