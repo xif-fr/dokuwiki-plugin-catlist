@@ -2,7 +2,7 @@
  * Js for plugin catlist
  * Adding pages
  *
- * @license	  GPL 2 (http://www.gnu.org/licenses/gpl.html)
+ * @license   MIT
  * @author    Félix Faisant <xcodexif@xif.fr>
  *
  */

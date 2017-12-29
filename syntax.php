@@ -2,7 +2,7 @@
 /**
  * Plugin catlist : Displays a list of the pages of a namespace recursively
  *
- * @license	  GPL 2 (http://www.gnu.org/licenses/gpl.html)
+ * @license   MIT
  * @author    Félix Faisant <xcodexif@xif.fr>
  *
  */
@@ -14,6 +14,7 @@ require_once(DOKU_PLUGIN.'syntax.php');
 require_once(DOKU_INC.'inc/search.php');
 require_once(DOKU_INC.'inc/pageutils.php');
 require_once(DOKU_INC.'inc/parserutils.php');
+require_once(DOKU_INC.'inc/SafeFN.class.php');
 
 define('CATLIST_DISPLAY_LIST', 1);
 define('CATLIST_DISPLAY_LINE', 2);
