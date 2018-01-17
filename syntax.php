@@ -83,7 +83,8 @@ class syntax_plugin_catlist extends DokuWiki_Syntax_Plugin {
 		              'scandir_sort' => $_default_sort_map[$this->getConf('default_sort')],
 		              'hide_index' => (boolean)$this->getConf('hide_index'),
 		              'index_priority' => array(),
-		              'nocache' => (boolean)$this->getConf('nocache') );
+		              'nocache' => (boolean)$this->getConf('nocache'),
+		              'hide_nsnotr' => (boolean)$this->getConf('hide_acl_nsnotr') );
 
 		$index_priority = explode(',', $this->getConf('index_priority'));
 		foreach ($index_priority as $index_type) {
@@ -363,6 +364,7 @@ class syntax_plugin_catlist extends DokuWiki_Syntax_Plugin {
 			if (isset($item['_'])) {
 				// It's a namespace
 				$perms = auth_quickaclcheck($item['id'].':*');
+				if ($perms < AUTH_READ && $data['hide_nsnotr']) continue;
 				$item['linkdisp'] = $item['linkdisp'] && ($perms >= AUTH_READ);
 				$item['buttonid'] = ($perms >= AUTH_CREATE) ? $item['buttonid'] : NULL;
 				$this->_displayNSBegin($renderer, $data, $item['title'], $item['linkdisp'], $item['linkid']);
