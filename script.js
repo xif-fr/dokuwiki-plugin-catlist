@@ -7,7 +7,7 @@
  *
  */
 
-function button_add_page (element, baseUrl, script, ns, useslash, userewrite, sepchar) {
+function catlist_button_add_page (element, ns) {
 	var addPageForm = element.parentNode;
 	addPageForm.innerHTML = "";
 	var addPageLabel = document.createElement('label');
@@ -32,43 +32,27 @@ function button_add_page (element, baseUrl, script, ns, useslash, userewrite, se
 			addPageInput.focus();
 			return;
 		}
-		var newPageID = ns + addPageInput.value;
-		newPageID = str_replace(' ', sepchar, newPageID);
-		newPageID = newPageID.toLowerCase();
-		if (useslash && userewrite) {
-			newPageID = str_replace(':', '/', newPageID);
+		var pagename = addPageInput.value;
+		if (typeof String.prototype.normalize === "function")
+		pagename = pagename.normalize('NFD')
+		                   .replace(/[\u0300-\u036f]/g, ""); // eliminates diacritics
+		pagename = pagename.replace(/[^a-zA-Z0-9._-]+/g, catlist_sepchar) // transforms characters not allowed as pagename in `catlist_sepchar`
+		                   .replace(/^[._-]+/, "") // eliminates '.', '_' and '-' at the beginning and end
+		                   .replace(/[._-]+$/, "")
+		                   .replace(new RegExp(catlist_sepchar+'{2,}','g'), catlist_sepchar) // squash multiple sepchars into one
+		                   .toLowerCase();
+		var newPageID = ns + pagename;
+		if (catlist_useslash && catlist_userewrite != 0) {
+			newPageID = newPageID.replace(/:/g, '/');
 		}
-		if (userewrite) {
-			newPageURL = baseUrl + newPageID + '?do=edit';
-		} else {
-			newPageURL = baseUrl + script + '?id=' + newPageID + '&do=edit';
+		switch (catlist_userewrite) {
+			case 0: 
+				newPageURL = catlist_baseurl + catlist_basescript + '?id=' + newPageID + '&do=edit'; break;
+			case 1:
+				newPageURL = catlist_baseurl + newPageID + '?do=edit'; break;
+			case 2:
+				newPageURL = catlist_baseurl + catlist_basescript + '/' + newPageID + '&do=edit'; break;
 		}
 		window.location.href = newPageURL;
 	});
-}
-
-/**************************************** UTILS ****************************************/
-
-function str_replace (search, replace, subject, count) {
-	// from http://phpjs.org/functions/str_replace
-	var i = 0, j = 0, temp = '', repl = '', sl = 0, fl = 0,
-	f = [].concat(search),
-	r = [].concat(replace),
-	s = subject,
-	ra = Object.prototype.toString.call(r) === '[object Array]',
-	sa = Object.prototype.toString.call(s) === '[object Array]';
-	s = [].concat(s);
-	if (count) this.window[count] = 0;
-	for (i = 0, sl = s.length; i < sl; i++) {
-		if (s[i] === '') continue;
-		for (j = 0, fl = f.length; j < fl; j++) {
-			temp = s[i] + '';
-			repl = ra ? (r[j] !== undefined ? r[j] : '') : r[0];
-			s[i] = (temp).split(f[j]).join(repl);
-			if (count && s[i] !== temp) {
-				this.window[count] += (temp.length - s[i].length) / f[j].length;
-			}
-		}
-	}
-	return sa ? s : s[0];
 }
