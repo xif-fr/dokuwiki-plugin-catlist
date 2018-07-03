@@ -325,7 +325,8 @@ class syntax_plugin_catlist extends DokuWiki_Syntax_Plugin {
 			$renderer->nocache();
 
 			// Walk namespace tree
-		$this->_walk($data);
+		$r = $this->_walk($data);
+		if ($r == FALSE) return FALSE;
 
 			// Write params for the add page button
 		global $conf;
