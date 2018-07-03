@@ -84,13 +84,13 @@ class syntax_plugin_catlist extends DokuWiki_Syntax_Plugin {
 		              'hide_index' => (boolean)$this->getConf('hide_index'),
 		              'index_priority' => array(),
 		              'nocache' => (boolean)$this->getConf('nocache'),
-		              'hide_nsnotr' => (boolean)$this->getConf('hide_acl_nsnotr') );
+		              'hide_nsnotr' => (boolean)$this->getConf('hide_acl_nsnotr'), 'show_perms' => (boolean)$this->getConf('show_acl') );
 
 		$index_priority = explode(',', $this->getConf('index_priority'));
 		foreach ($index_priority as $index_type) {
 			if (!array_key_exists($index_type, $_index_priority_map)) {
 				msg("catlist: invalid index type in index_priority", -1);
-				return FALSE;
+				return false;
 			}
 			$data['index_priority'][] = $_index_priority_map[$index_type];
 		}
@@ -104,7 +104,7 @@ class syntax_plugin_catlist extends DokuWiki_Syntax_Plugin {
 			$data['expand'] = intval($found[1]);
 			$match = str_replace($found[0], '', $match);
 		}
-		
+
 		// Namespace options
 		$this->_checkOption($match, "forceLinks", $data['nsLinks'], CATLIST_NSLINK_FORCE); // /!\ Deprecated
 		$this->_checkOptionParam($match, "nsLinks", $data['nsLinks'], array( "none" => CATLIST_NSLINK_NONE, 
@@ -188,7 +188,7 @@ class syntax_plugin_catlist extends DokuWiki_Syntax_Plugin {
 		if ($split[0] == '..') {
 			// Path would be outside the 'pages' directory
 			msg($this->getLang('outofpages'), -1);
-			return FALSE;
+			return false;
 		}
 		$data['ns'] = implode(':', $split);
 		return $data;
@@ -210,7 +210,7 @@ class syntax_plugin_catlist extends DokuWiki_Syntax_Plugin {
 	}
 
 	function _getStartPage ($index_priority, $parid, $parpath, $name, $force, &$exists) {
-		$exists = FALSE;
+		$exists = false;
 		if ($parid != '') $parid .= ':';
 		global $conf;
 		$index_path_map = array( CATLIST_INDEX_START => $parpath.'/'.$name.'/'.$conf['start'].'.txt',
@@ -221,14 +221,14 @@ class syntax_plugin_catlist extends DokuWiki_Syntax_Plugin {
 		                       CATLIST_INDEX_INSIDE => $parid .$name.':'.$name );
 		foreach ($index_priority as $index_type) {
 			if (is_file($index_path_map[$index_type])) {
-				$exists = TRUE;
+				$exists = true;
 				return $index_id_map[$index_type];
 			}
 		}
 		if ($force && isset($index_priority[0])) 
 			return $index_id_map[0];
 		else
-			return FALSE;
+			return false;
 	}
 
 	function _walk (&$data) {
@@ -240,7 +240,7 @@ class syntax_plugin_catlist extends DokuWiki_Syntax_Plugin {
 			$path = SafeFn::encode($path);
 		if (!is_dir($path)) {
 			msg(sprintf($this->getLang('dontexist'), $ns), -1);
-			return FALSE;
+			return false;
 		}
 			// Main page
 		$main = array( 'id' => $ns.':',
@@ -258,7 +258,7 @@ class syntax_plugin_catlist extends DokuWiki_Syntax_Plugin {
 		$data['tree'] = array();
 		$data['index_pages'] = array( $main['id'] );
 		$this->_walk_recurse($data, $path, $ns, false, false, 1, $data['maxdepth'], $data['tree'], $data['index_pages']);
-		return TRUE;
+		return true;
 	}
 
 	function _walk_recurse (&$data, $path, $ns, $excluPages, $excluNS, $depth, $maxdepth, &$_TREE) {
@@ -275,7 +275,7 @@ class syntax_plugin_catlist extends DokuWiki_Syntax_Plugin {
 				// It's a namespace
 			if (is_dir($path.'/'.$file)) {
 					// Index page of the namespace
-				$index_exists = FALSE;
+				$index_exists = false;
 				$index_id = $this->_getStartPage($data['index_priority'], $ns, $path, $name, ($data['nsLinks']==CATLIST_NSLINK_FORCE), $index_exists);
 				if ($index_exists)
 					$data['index_pages'][] = $index_id;
@@ -317,7 +317,7 @@ class syntax_plugin_catlist extends DokuWiki_Syntax_Plugin {
 	/************************************ Rendering ************************************/
 
 	function render ($mode, Doku_Renderer $renderer, $data) {		
-		if (!is_array($data)) return FALSE;
+		if (!is_array($data)) return false;
 		$ns = $data['ns'];
 
 			// Disabling cache
@@ -326,7 +326,7 @@ class syntax_plugin_catlist extends DokuWiki_Syntax_Plugin {
 
 			// Walk namespace tree
 		$r = $this->_walk($data);
-		if ($r == FALSE) return FALSE;
+		if ($r == false) return false;
 
 			// Write params for the add page button
 		global $conf;
@@ -361,7 +361,7 @@ class syntax_plugin_catlist extends DokuWiki_Syntax_Plugin {
 		if ($data['createPageButtonNs'] && $perm_create) $this->_displayAddPageButton($renderer, $ns_button, $data['displayType']);
 		if ($data['displayType'] == CATLIST_DISPLAY_LIST) $renderer->doc .= '</ul>';
 		
-		return TRUE;
+		return true;
 	}
 	
 	function _recurse (&$renderer, $data, $_TREE) {
@@ -369,28 +369,30 @@ class syntax_plugin_catlist extends DokuWiki_Syntax_Plugin {
 			if (isset($item['_'])) {
 				// It's a namespace
 				$perms = auth_quickaclcheck($item['id'].':*');
-				if ($perms < AUTH_READ && $data['hide_nsnotr']) continue;
+				if ($perms < AUTH_READ && $data['hide_nsnotr'] && !$data['show_perms']) continue;
 				$item['linkdisp'] = $item['linkdisp'] && ($perms >= AUTH_READ);
 				$item['buttonid'] = ($perms >= AUTH_CREATE) ? $item['buttonid'] : NULL;
-				$this->_displayNSBegin($renderer, $data, $item['title'], $item['linkdisp'], $item['linkid']);
+				$this->_displayNSBegin($renderer, $data, $item['title'], $item['linkdisp'], $item['linkid'], ($data['show_perms'] ? $perms : NULL));
 				if ($perms >= AUTH_READ)
 					$this->_recurse($renderer, $data, $item['_']);
 				$this->_displayNSEnd($renderer, $data['displayType'], $item['buttonid']);
 			} else { 
 				// It's a page
-				if (auth_quickaclcheck($id) < AUTH_READ) continue;
+				$perms = auth_quickaclcheck($item['id']);
+				if ($perms < AUTH_READ && !$data['show_perms']) continue;
 				if ($data['hide_index'] && in_array($item['id'], $data['index_pages'])) continue;
-				$this->_displayPage($renderer, $item, $data['displayType']);
+				$this->_displayPage($renderer, $item, $data['displayType'], ($data['show_perms'] ? $perms : NULL));
 			}
 		}
 	}
 
-	function _displayNSBegin (&$renderer, $data, $title, $displayLink, $idLink) {
+	function _displayNSBegin (&$renderer, $data, $title, $displayLink, $idLink, $perms) {
 		if ($data['displayType'] == CATLIST_DISPLAY_LIST) {
 			$warper_ns = ($data['nsInBold']) ? 'strong' : 'span';
 			$renderer->doc .= '<li class="catlist-ns"><'.$warper_ns.' class="li catlist-nshead">';
 			if ($displayLink) $renderer->internallink($idLink, $title);
 			else $renderer->doc .= htmlspecialchars($title);
+			if ($perms !== NULL) $renderer->doc .= ' [ns, perm='.$perms.']';
 			$renderer->doc .= '</'.$warper_ns.'>';
 			$renderer->doc .= '<ul class="catlist-nslist">';
 		} 
@@ -409,10 +411,11 @@ class syntax_plugin_catlist extends DokuWiki_Syntax_Plugin {
 		else if ($displayType == CATLIST_DISPLAY_LINE) $renderer->doc .= '] ';
 	}
 	
-	function _displayPage (&$renderer, $item, $displayType) {
+	function _displayPage (&$renderer, $item, $displayType, $perms) {
 		if ($displayType == CATLIST_DISPLAY_LIST) {
 			$renderer->doc .= '<li class="catlist-page">';
 			$renderer->internallink(':'.$item['id'], $item['title']);
+			if ($perms !== NULL) $renderer->doc .= ' [page, perm='.$perms.']';
 			$renderer->doc .= '</li>';
 		} else if ($displayType == CATLIST_DISPLAY_LINE) {
 			$renderer->internallink(':'.$item['id'], $item['title']);
