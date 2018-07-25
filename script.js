@@ -54,7 +54,7 @@ function catlist_button_add_page (element, ns) {
 			case 1:
 				newPageURL = catlist_baseurl + newPageID + '?do=edit'; break;
 			case 2:
-				newPageURL = catlist_baseurl + catlist_basescript + '/' + newPageID + '&do=edit'; break;
+				newPageURL = catlist_baseurl + catlist_basescript + '/' + newPageID + '?do=edit'; break;
 		}
 		window.location.href = newPageURL;
 	});
