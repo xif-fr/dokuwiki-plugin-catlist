@@ -238,6 +238,8 @@ class syntax_plugin_catlist extends DokuWiki_Syntax_Plugin {
 		$path = $conf['savedir'].'/pages/'.str_replace(':', '/', $ns);
 		if ($conf['fnencode'] == 'safe')
 			$path = SafeFn::encode($path);
+		else if ($conf['fnencode'] == 'url')
+			$path = utf8_encodeFN($path);
 		if (!is_dir($path)) {
 			msg(sprintf($this->getLang('dontexist'), $ns), -1);
 			return false;
