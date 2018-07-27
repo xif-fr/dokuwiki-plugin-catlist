@@ -14,7 +14,6 @@ require_once(DOKU_PLUGIN.'syntax.php');
 require_once(DOKU_INC.'inc/search.php');
 require_once(DOKU_INC.'inc/pageutils.php');
 require_once(DOKU_INC.'inc/parserutils.php');
-require_once(DOKU_INC.'inc/SafeFN.class.php');
 
 define('CATLIST_DISPLAY_LIST', 1);
 define('CATLIST_DISPLAY_LINE', 2);
@@ -236,8 +235,7 @@ class syntax_plugin_catlist extends DokuWiki_Syntax_Plugin {
 			// Prepare
 		$ns = $data['ns'];
 		$path = $conf['savedir'].'/pages/'.str_replace(':', '/', $ns);
-		if ($conf['fnencode'] == 'safe')
-			$path = SafeFn::encode($path);
+		$path = utf8_encodeFN($path);
 		if (!is_dir($path)) {
 			msg(sprintf($this->getLang('dontexist'), $ns), -1);
 			return false;
