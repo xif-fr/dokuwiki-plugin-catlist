@@ -78,7 +78,7 @@ class syntax_plugin_catlist extends DokuWiki_Syntax_Plugin {
 		              'createPageButtonNs' => true, 'createPageButtonSubs' => false, 
 		              'head' => true, 'headTitle' => NULL, 'smallHead' => false, 'linkStartHead' => true, 'hn' => 'h1',
 		              'useheading' => (boolean)$this->getConf('useheading'),
-		              'nsuseheading' => (boolean)$this->getConf('useheading'), 'nsLinks' => CATLIST_NSLINK_AUTO,
+		              'nsuseheading' => NULL, 'nsLinks' => CATLIST_NSLINK_AUTO,
 		              'columns' => 0, 'maxdepth' => 0,
 		              'scandir_sort' => $_default_sort_map[$this->getConf('default_sort')],
 		              'hide_index' => (boolean)$this->getConf('hide_index'),
@@ -106,6 +106,7 @@ class syntax_plugin_catlist extends DokuWiki_Syntax_Plugin {
 		}
 		$this->_checkOption($match, "noHeadTitle", $data['useheading'], false);
 		$this->_checkOption($match, "forceHeadTitle", $data['useheading'], true);
+		$data['nsuseheading'] = $data['useheading'];
 		$this->_checkOption($match, "noNSHeadTitle", $data['nsuseheading'], false);
 
 		// Namespace options
