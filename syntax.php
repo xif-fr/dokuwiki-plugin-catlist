@@ -77,7 +77,8 @@ class syntax_plugin_catlist extends DokuWiki_Syntax_Plugin {
 		              'exclutype' => 'id', 
 		              'createPageButtonNs' => true, 'createPageButtonSubs' => false, 
 		              'head' => true, 'headTitle' => NULL, 'smallHead' => false, 'linkStartHead' => true, 'hn' => 'h1',
-		              'NsHeadTitle' => true, 'nsLinks' => CATLIST_NSLINK_AUTO,
+		              'useheading' => (boolean)$this->getConf('useheading'),
+		              'nsuseheading' => (boolean)$this->getConf('useheading'), 'nsLinks' => CATLIST_NSLINK_AUTO,
 		              'columns' => 0, 'maxdepth' => 0,
 		              'scandir_sort' => $_default_sort_map[$this->getConf('default_sort')],
 		              'hide_index' => (boolean)$this->getConf('hide_index'),
@@ -103,15 +104,15 @@ class syntax_plugin_catlist extends DokuWiki_Syntax_Plugin {
 			$data['expand'] = intval($found[1]);
 			$match = str_replace($found[0], '', $match);
 		}
+		$this->_checkOption($match, "noHeadTitle", $data['useheading'], false);
+		$this->_checkOption($match, "forceHeadTitle", $data['useheading'], true);
+		$this->_checkOption($match, "noNSHeadTitle", $data['nsuseheading'], false);
 
 		// Namespace options
 		$this->_checkOption($match, "forceLinks", $data['nsLinks'], CATLIST_NSLINK_FORCE); // /!\ Deprecated
 		$this->_checkOptionParam($match, "nsLinks", $data['nsLinks'], array( "none" => CATLIST_NSLINK_NONE, 
 		                                                                     "auto" => CATLIST_NSLINK_AUTO, 
 		                                                                     "force" => CATLIST_NSLINK_FORCE ));
-		$this->_checkOption($match, "noNSHeadTitle", $data['NsHeadTitle'], false);
-		if ($data['NsHeadTitle'] == false) 
-			$data['nsLinks'] = CATLIST_NSLINK_NONE;
 
 		// Exclude options
 		for ($found; preg_match("/-(exclu(page|ns|nsall|nspages|nsns)):\"([^\\/\"]+)\" /i", $match, $found); ) {
@@ -248,8 +249,10 @@ class syntax_plugin_catlist extends DokuWiki_Syntax_Plugin {
 		if ($data['headTitle'] !== NULL) 
 			$main['title'] = $data['headTitle'];
 		else {
-			if ($main['exist']) $main['title'] = p_get_first_heading($main['id'], true);
-			if (is_null($main['title'])) $main['title'] = end(explode(':', $ns));
+			if ($data['useheading'] && $main['exist']) 
+				$main['title'] = p_get_first_heading($main['id'], true);
+			if (is_null($main['title']))
+				$main['title'] = end(explode(':', $ns));
 		}
 		$data['main'] = $main;
 			// Recursion
@@ -281,7 +284,7 @@ class syntax_plugin_catlist extends DokuWiki_Syntax_Plugin {
 				if ($excluNS) continue;
 				if ($this->_isExcluded($item, $data['exclutype'], $data['excluns'])) continue;
 					// Namespace
-				$item['title'] = ($index_exists && $data['NsHeadTitle']) ? p_get_first_heading($index_id, true) : $name;
+				$item['title'] = ($index_exists && $data['nsuseheading']) ? p_get_first_heading($index_id, true) : $name;
 				$item['linkdisp'] = ($index_exists && ($data['nsLinks']==CATLIST_NSLINK_AUTO)) || ($data['nsLinks']==CATLIST_NSLINK_FORCE);
 				$item['linkid'] = $index_id;
 					// Button
@@ -301,8 +304,10 @@ class syntax_plugin_catlist extends DokuWiki_Syntax_Plugin {
 			if (!$excluPages) {
 				if (substr($file, -4) != ".txt") continue;
 					// Page title
-				$title = p_get_first_heading($id, true);
-				if (!is_null($title)) $item['title'] = $title;
+				if ($data['nsuseheading']) {
+					$title = p_get_first_heading($id, true);
+					if (!is_null($title)) $item['title'] = $title;
+				}
 					// Exclusion
 				if ($this->_isExcluded($item, $data['exclutype'], $data['exclupage'])) continue;
 					// Tree

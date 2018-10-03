@@ -6,3 +6,4 @@ $lang['index_priority'] = "Priority order of pages used as index pages, between 
 $lang['nocache'] = "Disable page cache where catlist is used";
 $lang['hide_acl_nsnotr'] = "Hide namespaces for which the user doesn't have ACL Read permission";
 $lang['show_acl'] = "Ignore ACLs (show everything, regardless of the user) and show user permissions for each item";
+$lang['useheading'] = "Use first heading for pagenames (regardless of dokuwiki's 'useheading' setting)";
