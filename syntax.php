@@ -304,7 +304,7 @@ class syntax_plugin_catlist extends DokuWiki_Syntax_Plugin {
 			if (!$excluPages) {
 				if (substr($file, -4) != ".txt") continue;
 					// Page title
-				if ($data['nsuseheading']) {
+				if ($data['useheading']) {
 					$title = p_get_first_heading($id, true);
 					if (!is_null($title)) $item['title'] = $title;
 				}
@@ -319,7 +319,7 @@ class syntax_plugin_catlist extends DokuWiki_Syntax_Plugin {
 	/***********************************************************************************/
 	/************************************ Rendering ************************************/
 
-	function render ($mode, Doku_Renderer $renderer, $data) {		
+	function render ($mode, Doku_Renderer $renderer, $data) {
 		if (!is_array($data)) return false;
 		$ns = $data['ns'];
 
