@@ -285,7 +285,10 @@ class syntax_plugin_catlist extends DokuWiki_Syntax_Plugin {
 				if ($excluNS) continue;
 				if ($this->_isExcluded($item, $data['exclutype'], $data['excluns'])) continue;
 					// Namespace
-				$item['title'] = ($index_exists && $data['nsuseheading']) ? p_get_first_heading($index_id, true) : $name;
+				if ($index_exists && $data['nsuseheading']) 
+					$item['title'] = p_get_first_heading($index_id, true);
+				if (is_null($item['title']))
+					$item['title'] = $name;
 				$item['linkdisp'] = ($index_exists && ($data['nsLinks']==CATLIST_NSLINK_AUTO)) || ($data['nsLinks']==CATLIST_NSLINK_FORCE);
 				$item['linkid'] = $index_id;
 					// Button
@@ -307,8 +310,11 @@ class syntax_plugin_catlist extends DokuWiki_Syntax_Plugin {
 					// Page title
 				if ($data['useheading']) {
 					$title = p_get_first_heading($id, true);
-					if (!is_null($title)) $item['title'] = $title;
+					if (!is_null($title))
+						$item['title'] = $title;
 				}
+				if (is_null($item['title']))
+					$item['title'] = $name;
 					// Exclusion
 				if ($this->_isExcluded($item, $data['exclutype'], $data['exclupage'])) continue;
 					// Tree
