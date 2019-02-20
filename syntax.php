@@ -404,7 +404,7 @@ class syntax_plugin_catlist extends DokuWiki_Syntax_Plugin {
 			if (isset($item['_'])) {
 				// It's a namespace
 				$perms = $this->_cached_quickaclcheck($item['id'].':*');
-				if ($perms < AUTH_READ && $data['hide_nsnotr'] && !$data['show_perms']) {
+				if ($perms < AUTH_READ && (($data['hide_nsnotr'] && !$data['show_perms']) || $limitedNSPerms)) {
 					if (!$data['show_leading_ns'])
 						continue;
 					// Walk the tree below this, see if any page/namespace below this has access
