@@ -367,7 +367,7 @@ class syntax_plugin_catlist extends DokuWiki_Syntax_Plugin {
 		}
 		if ($data['displayType'] == CATLIST_DISPLAY_LIST) $renderer->doc .= '<ul '.$global_ul_attr.'>';
 		$this->_recurse($renderer, $data, $data['tree']);
-		$perm_create = auth_quickaclcheck($ns.':*') >= AUTH_CREATE;
+		$perm_create = $this->_cached_quickaclcheck($ns.':*') >= AUTH_CREATE;
 		$ns_button = ($ns == '') ? '' : $ns.':';
 		if ($data['createPageButtonNs'] && $perm_create) $this->_displayAddPageButton($renderer, $ns_button, $data['displayType']);
 		if ($data['displayType'] == CATLIST_DISPLAY_LIST) $renderer->doc .= '</ul>';
@@ -419,7 +419,7 @@ class syntax_plugin_catlist extends DokuWiki_Syntax_Plugin {
 				$this->_displayNSEnd($renderer, $data['displayType'], $item['buttonid']);
 			} else { 
 				// It's a page
-				$perms = auth_quickaclcheck($item['id']);
+				$perms = $this->_cached_quickaclcheck($item['id']);
 				if ($perms < AUTH_READ && (!$data['show_perms'] || $limitedNSPerms)) continue;
 				if ($data['hide_index'] && in_array($item['id'], $data['index_pages'])) continue;
 				$this->_displayPage($renderer, $item, $data['displayType'], ($data['show_perms'] ? $perms : NULL));
