@@ -252,8 +252,10 @@ class syntax_plugin_catlist extends DokuWiki_Syntax_Plugin {
 		else {
 			if ($data['useheading'] && $main['exist']) 
 				$main['title'] = p_get_first_heading($main['id'], true);
-			if (is_null($main['title']))
-				$main['title'] = end(explode(':', $ns));
+			if (is_null($main['title'])) {
+				$ex = explode(':', $ns);
+				$main['title'] = end($ex);
+			}
 		}
 		$data['main'] = $main;
 			// Recursion
