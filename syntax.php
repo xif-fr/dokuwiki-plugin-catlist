@@ -84,7 +84,8 @@ class syntax_plugin_catlist extends DokuWiki_Syntax_Plugin {
 		              'hide_index' => (boolean)$this->getConf('hide_index'),
 		              'index_priority' => array(),
 		              'nocache' => (boolean)$this->getConf('nocache'),
-		              'hide_nsnotr' => (boolean)$this->getConf('hide_acl_nsnotr'), 'show_perms' => (boolean)$this->getConf('show_acl') );
+		              'hide_nsnotr' => (boolean)$this->getConf('hide_acl_nsnotr'), 'show_perms' => (boolean)$this->getConf('show_acl'),
+		              'show_leading_ns' => (boolean)$this->getConf('show_leading_ns') );
 
 		$index_priority = explode(',', $this->getConf('index_priority'));
 		foreach ($index_priority as $index_type) {
@@ -368,7 +369,7 @@ class syntax_plugin_catlist extends DokuWiki_Syntax_Plugin {
 		}
 		if ($data['displayType'] == CATLIST_DISPLAY_LIST) $renderer->doc .= '<ul '.$global_ul_attr.'>';
 		$this->_recurse($renderer, $data, $data['tree']);
-		$perm_create = auth_quickaclcheck($ns.':*') >= AUTH_CREATE;
+		$perm_create = $this->_cached_quickaclcheck($ns.':*') >= AUTH_CREATE;
 		$ns_button = ($ns == '') ? '' : $ns.':';
 		if ($data['createPageButtonNs'] && $perm_create) $this->_displayAddPageButton($renderer, $ns_button, $data['displayType']);
 		if ($data['displayType'] == CATLIST_DISPLAY_LIST) $renderer->doc .= '</ul>';
@@ -376,22 +377,52 @@ class syntax_plugin_catlist extends DokuWiki_Syntax_Plugin {
 		return true;
 	}
 	
-	function _recurse (&$renderer, $data, $_TREE) {
+	function _cached_quickaclcheck($id) {
+		static $cache = array();
+
+		if (!isset($cache[$id]))
+			$cache[$id] = auth_quickaclcheck($id);
+
+		return $cache[$id];
+	}
+
+	function _any_child_perms ($data, $_TREE) {
+		foreach ($_TREE as $item) {
+			if (isset($item['_'])) {
+				$perms = $this->_cached_quickaclcheck($item['id'].':*');
+				if ($perms >= AUTH_READ || $this->_any_child_perms($data, $item['_']))
+					return true;
+			} else {
+				$perms = $this->_cached_quickaclcheck($item['id']);
+				if ($perms >= AUTH_READ)
+					return true;
+			}
+		}
+		return false;
+	}
+
+	function _recurse (&$renderer, $data, $_TREE, $limitedNSPerms = false) {
 		foreach ($_TREE as $item) {
 			if (isset($item['_'])) {
 				// It's a namespace
-				$perms = auth_quickaclcheck($item['id'].':*');
-				if ($perms < AUTH_READ && $data['hide_nsnotr'] && !$data['show_perms']) continue;
+				$perms = $this->_cached_quickaclcheck($item['id'].':*');
+				if ($perms < AUTH_READ && (($data['hide_nsnotr'] && !$data['show_perms']) || $limitedNSPerms)) {
+					if (!$data['show_leading_ns'])
+						continue;
+					// Walk the tree below this, see if any page/namespace below this has access
+					if (!$this->_any_child_perms($data, $item['_']))
+						continue;
+				}
 				$item['linkdisp'] = $item['linkdisp'] && ($perms >= AUTH_READ);
 				$item['buttonid'] = ($perms >= AUTH_CREATE) ? $item['buttonid'] : NULL;
 				$this->_displayNSBegin($renderer, $data, $item['title'], $item['linkdisp'], $item['linkid'], ($data['show_perms'] ? $perms : NULL));
-				if ($perms >= AUTH_READ)
-					$this->_recurse($renderer, $data, $item['_']);
+				if ($perms >= AUTH_READ || ($data['show_leading_ns'] && ($limitedNSPerms = $this->_any_child_perms($data, $item['_']))))
+					$this->_recurse($renderer, $data, $item['_'], $limitedNSPerms);
 				$this->_displayNSEnd($renderer, $data['displayType'], $item['buttonid']);
 			} else { 
 				// It's a page
-				$perms = auth_quickaclcheck($item['id']);
-				if ($perms < AUTH_READ && !$data['show_perms']) continue;
+				$perms = $this->_cached_quickaclcheck($item['id']);
+				if ($perms < AUTH_READ && (!$data['show_perms'] || $limitedNSPerms)) continue;
 				if ($data['hide_index'] && in_array($item['id'], $data['index_pages'])) continue;
 				$this->_displayPage($renderer, $item, $data['displayType'], ($data['show_perms'] ? $perms : NULL));
 			}
