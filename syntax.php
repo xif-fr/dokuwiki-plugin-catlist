@@ -233,6 +233,7 @@ class syntax_plugin_catlist extends DokuWiki_Syntax_Plugin {
 			return false;
 	}
 
+		/* Entry function for tree walking, called in render() */
 	function _walk (&$data) {
 		global $conf;
 			// Prepare
@@ -266,6 +267,7 @@ class syntax_plugin_catlist extends DokuWiki_Syntax_Plugin {
 		return true;
 	}
 
+		/* Recursive function for tree walking */
 	function _walk_recurse (&$data, $path, $ns, $excluPages, $excluNS, $depth, $maxdepth, &$_TREE) {
 		$scanDirs = @scandir($path, $data['scandir_sort']);
 		if ($scanDirs === false) {
@@ -377,15 +379,15 @@ class syntax_plugin_catlist extends DokuWiki_Syntax_Plugin {
 		return true;
 	}
 	
+		/* Just cache the calls to auth_quickaclcheck, mainly for _any_child_perms */
 	function _cached_quickaclcheck($id) {
 		static $cache = array();
-
 		if (!isset($cache[$id]))
 			$cache[$id] = auth_quickaclcheck($id);
-
 		return $cache[$id];
 	}
 
+		/* Walk the tree to see if any page/namespace below this has read access access, for show_leading_ns option */
 	function _any_child_perms ($data, $_TREE) {
 		foreach ($_TREE as $item) {
 			if (isset($item['_'])) {
@@ -401,29 +403,34 @@ class syntax_plugin_catlist extends DokuWiki_Syntax_Plugin {
 		return false;
 	}
 
-	function _recurse (&$renderer, $data, $_TREE, $limitedNSPerms = false) {
+	function _recurse (&$renderer, $data, $_TREE) {
 		foreach ($_TREE as $item) {
 			if (isset($item['_'])) {
 				// It's a namespace
 				$perms = $this->_cached_quickaclcheck($item['id'].':*');
-				if ($perms < AUTH_READ && (($data['hide_nsnotr'] && !$data['show_perms']) || $limitedNSPerms)) {
-					if (!$data['show_leading_ns'])
-						continue;
-					// Walk the tree below this, see if any page/namespace below this has access
-					if (!$this->_any_child_perms($data, $item['_']))
-						continue;
+				$perms_exemption = $data['show_perms'];
+				// If we actually care about not showing the namespace because of permissions :
+				if ($perms < AUTH_READ && !$perms_exemption) {
+					// If show_leading_ns activated, walk the tree below this, see if any page/namespace below this has access
+					if ($data['show_leading_ns'] && $this->_any_child_perms($data, $item['_'])) {
+						$perms_exemption = true;
+					} else {
+						if ($data['hide_nsnotr']) continue;
+					}
 				}
 				$item['linkdisp'] = $item['linkdisp'] && ($perms >= AUTH_READ);
 				$item['buttonid'] = ($perms >= AUTH_CREATE) ? $item['buttonid'] : NULL;
 				$this->_displayNSBegin($renderer, $data, $item['title'], $item['linkdisp'], $item['linkid'], ($data['show_perms'] ? $perms : NULL));
-				if ($perms >= AUTH_READ || ($data['show_leading_ns'] && ($limitedNSPerms = $this->_any_child_perms($data, $item['_']))))
-					$this->_recurse($renderer, $data, $item['_'], $limitedNSPerms);
+				if ($perms >= AUTH_READ || $perms_exemption) 
+					$this->_recurse($renderer, $data, $item['_']);
 				$this->_displayNSEnd($renderer, $data['displayType'], $item['buttonid']);
 			} else { 
 				// It's a page
 				$perms = $this->_cached_quickaclcheck($item['id']);
-				if ($perms < AUTH_READ && (!$data['show_perms'] || $limitedNSPerms)) continue;
-				if ($data['hide_index'] && in_array($item['id'], $data['index_pages'])) continue;
+				if ($perms < AUTH_READ && !$data['show_perms']) 
+					continue;
+				if ($data['hide_index'] && in_array($item['id'], $data['index_pages'])) 
+					continue;
 				$this->_displayPage($renderer, $item, $data['displayType'], ($data['show_perms'] ? $perms : NULL));
 			}
 		}
