@@ -36,7 +36,7 @@ function catlist_button_add_page (element, ns) {
 		if (typeof String.prototype.normalize === "function")
 		pagename = pagename.normalize('NFD')
 		                   .replace(/[\u0300-\u036f]/g, ""); // eliminates diacritics
-		pagename = pagename.replace(/[^a-zA-Z0-9._-]+/g, catlist_sepchar) // transforms characters not allowed as pagename in `catlist_sepchar`
+		pagename = pagename.replace(/[^a-zA-Z0-9._:-]+/g, catlist_sepchar) // transforms characters not allowed as page path in `catlist_sepchar`
 		                   .replace(/^[._-]+/, "") // eliminates '.', '_' and '-' at the beginning and end
 		                   .replace(/[._-]+$/, "")
 		                   .replace(new RegExp(catlist_sepchar+'{2,}','g'), catlist_sepchar) // squash multiple sepchars into one
