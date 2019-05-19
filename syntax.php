@@ -76,7 +76,8 @@ class syntax_plugin_catlist extends DokuWiki_Syntax_Plugin {
 		              'exclupage' => array(), 'excluns' => array(), 'exclunsall' => array(), 'exclunspages' => array(), 'exclunsns' => array(),
 		              'exclutype' => 'id', 
 		              'createPageButtonNs' => true, 'createPageButtonSubs' => false, 
-		              'head' => true, 'headTitle' => NULL, 'smallHead' => false, 'linkStartHead' => true, 'hn' => 'h1',
+		              'head' => (boolean)$this->getConf('showhead'),
+                              'headTitle' => NULL, 'smallHead' => false, 'linkStartHead' => true, 'hn' => 'h1',
 		              'useheading' => (boolean)$this->getConf('useheading'),
 		              'nsuseheading' => NULL, 'nsLinks' => CATLIST_NSLINK_AUTO,
 		              'columns' => 0, 'maxdepth' => 0,
@@ -145,6 +146,7 @@ class syntax_plugin_catlist extends DokuWiki_Syntax_Plugin {
 
 		// Head options
 		$this->_checkOption($match, "noHead", $data['head'], false);
+		$this->_checkOption($match, "showHead", $data['head'], true);
 		$this->_checkOption($match, "smallHead", $data['smallHead'], true);
 		$this->_checkOption($match, "noLinkStartHead", $data['linkStartHead'], false);
 		if (preg_match("/-(h[1-5])/i", $match, $found)) {
