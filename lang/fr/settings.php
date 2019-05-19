@@ -9,3 +9,4 @@ $lang['show_acl'] = "Débogage : ignore les ACLs (affiche tout, quelque soit l'u
 $lang['useheading'] = "Utilise le premier titre comme nom de page (indépendamment du 'useheading' global)";
 $lang['showhead'] = "Afficher le titre par défaut; remplacement individuel avec -noHead ou -showHead.";
 $lang['show_leading_ns'] = "Affiche le namespace si il existe un élément fils pour lequel l'utilisateur a la permission de lecture.";
+$lang['nswildcards'] = "Remplace les jetons de la forme '@...@' comme pour les modèles de pages.";

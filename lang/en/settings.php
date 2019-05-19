@@ -9,3 +9,4 @@ $lang['show_acl'] = "Ignore ACLs (show everything, regardless of the user) and s
 $lang['useheading'] = "Use first heading for pagenames (regardless of dokuwiki's 'useheading' setting)";
 $lang['showhead'] = "Show headline by default; individual override with -noHead and -showHead.";
 $lang['show_leading_ns'] = "Show leading namespaces to a page for which a user has ACL Read regardless of user ACLs on namespace.";
+$lang['nswildcards'] = "Replace wildcards in the namespace string as for page templates.";

@@ -174,6 +174,11 @@ class syntax_plugin_catlist extends DokuWiki_Syntax_Plugin {
 		
 		// Looking for the wanted namespace. Now, only the wanted namespace remains in $match. Then clean the namespace id
 		$ns = trim($match);
+		if ((boolean)$this->getConf('nswildcards')) {
+			global $ID;
+			$parsepagetemplate_data = array('id' => $ID, 'tpl' => $ns, 'doreplace' => true);
+			$ns = parsePageTemplate($parsepagetemplate_data);
+		}
 		if ($ns == '') $ns = '.'; // If there is nothing, we take the current namespace
 		global $ID;
 		if ($ns[0] == '.') $ns = getNS($ID).':'.$ns; // If it start with a '.', it is a relative path
