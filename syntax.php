@@ -77,7 +77,7 @@ class syntax_plugin_catlist extends DokuWiki_Syntax_Plugin {
 		              'exclutype' => 'id', 
 		              'createPageButtonNs' => true, 'createPageButtonSubs' => false, 
 		              'head' => (boolean)$this->getConf('showhead'),
-                              'headTitle' => NULL, 'smallHead' => false, 'linkStartHead' => true, 'hn' => 'h1',
+		              'headTitle' => NULL, 'smallHead' => false, 'linkStartHead' => true, 'hn' => 'h1',
 		              'useheading' => (boolean)$this->getConf('useheading'),
 		              'nsuseheading' => NULL, 'nsLinks' => CATLIST_NSLINK_AUTO,
 		              'columns' => 0, 'maxdepth' => 0,
@@ -86,7 +86,8 @@ class syntax_plugin_catlist extends DokuWiki_Syntax_Plugin {
 		              'index_priority' => array(),
 		              'nocache' => (boolean)$this->getConf('nocache'),
 		              'hide_nsnotr' => (boolean)$this->getConf('hide_acl_nsnotr'), 'show_perms' => (boolean)$this->getConf('show_acl'),
-		              'show_leading_ns' => (boolean)$this->getConf('show_leading_ns') );
+		              'show_leading_ns' => (boolean)$this->getConf('show_leading_ns'),
+		              'show_notfound_error' => true );
 
 		$index_priority = explode(',', $this->getConf('index_priority'));
 		foreach ($index_priority as $index_type) {
@@ -110,6 +111,7 @@ class syntax_plugin_catlist extends DokuWiki_Syntax_Plugin {
 		$this->_checkOption($match, "forceHeadTitle", $data['useheading'], true);
 		$data['nsuseheading'] = $data['useheading'];
 		$this->_checkOption($match, "noNSHeadTitle", $data['nsuseheading'], false);
+		$this->_checkOption($match, "hideNotFoundMsg", $data['show_notfound_error'], false);
 
 		// Namespace options
 		$this->_checkOption($match, "forceLinks", $data['nsLinks'], CATLIST_NSLINK_FORCE); // /!\ Deprecated
@@ -248,7 +250,8 @@ class syntax_plugin_catlist extends DokuWiki_Syntax_Plugin {
 		$path = $conf['savedir'].'/pages/'.str_replace(':', '/', $ns);
 		$path = utf8_encodeFN($path);
 		if (!is_dir($path)) {
-			msg(sprintf($this->getLang('dontexist'), $ns), -1);
+			if ($data['show_notfound_error'])
+				msg(sprintf($this->getLang('dontexist'), $ns), -1);
 			return false;
 		}
 			// Main page
