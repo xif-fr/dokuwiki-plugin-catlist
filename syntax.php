@@ -14,7 +14,6 @@ require_once(DOKU_PLUGIN.'syntax.php');
 require_once(DOKU_INC.'inc/search.php');
 require_once(DOKU_INC.'inc/pageutils.php');
 require_once(DOKU_INC.'inc/parserutils.php');
-require_once(DOKU_INC.'inc/SafeFN.class.php');
 
 define('CATLIST_DISPLAY_LIST', 1);
 define('CATLIST_DISPLAY_LINE', 2);
@@ -77,14 +76,18 @@ class syntax_plugin_catlist extends DokuWiki_Syntax_Plugin {
 		              'exclupage' => array(), 'excluns' => array(), 'exclunsall' => array(), 'exclunspages' => array(), 'exclunsns' => array(),
 		              'exclutype' => 'id', 
 		              'createPageButtonNs' => true, 'createPageButtonSubs' => false, 
-		              'head' => true, 'headTitle' => NULL, 'smallHead' => false, 'linkStartHead' => true, 'hn' => 'h1',
-		              'NsHeadTitle' => true, 'nsLinks' => CATLIST_NSLINK_AUTO,
+		              'head' => (boolean)$this->getConf('showhead'),
+		              'headTitle' => NULL, 'smallHead' => false, 'linkStartHead' => true, 'hn' => 'h1',
+		              'useheading' => (boolean)$this->getConf('useheading'),
+		              'nsuseheading' => NULL, 'nsLinks' => CATLIST_NSLINK_AUTO,
 		              'columns' => 0, 'maxdepth' => 0,
 		              'scandir_sort' => $_default_sort_map[$this->getConf('default_sort')],
 		              'hide_index' => (boolean)$this->getConf('hide_index'),
 		              'index_priority' => array(),
 		              'nocache' => (boolean)$this->getConf('nocache'),
-		              'hide_nsnotr' => (boolean)$this->getConf('hide_acl_nsnotr'), 'show_perms' => (boolean)$this->getConf('show_acl') );
+		              'hide_nsnotr' => (boolean)$this->getConf('hide_acl_nsnotr'), 'show_perms' => (boolean)$this->getConf('show_acl'),
+		              'show_leading_ns' => (boolean)$this->getConf('show_leading_ns'),
+		              'show_notfound_error' => true );
 
 		$index_priority = explode(',', $this->getConf('index_priority'));
 		foreach ($index_priority as $index_type) {
@@ -104,15 +107,17 @@ class syntax_plugin_catlist extends DokuWiki_Syntax_Plugin {
 			$data['expand'] = intval($found[1]);
 			$match = str_replace($found[0], '', $match);
 		}
+		$this->_checkOption($match, "noHeadTitle", $data['useheading'], false);
+		$this->_checkOption($match, "forceHeadTitle", $data['useheading'], true);
+		$data['nsuseheading'] = $data['useheading'];
+		$this->_checkOption($match, "noNSHeadTitle", $data['nsuseheading'], false);
+		$this->_checkOption($match, "hideNotFoundMsg", $data['show_notfound_error'], false);
 
 		// Namespace options
 		$this->_checkOption($match, "forceLinks", $data['nsLinks'], CATLIST_NSLINK_FORCE); // /!\ Deprecated
 		$this->_checkOptionParam($match, "nsLinks", $data['nsLinks'], array( "none" => CATLIST_NSLINK_NONE, 
 		                                                                     "auto" => CATLIST_NSLINK_AUTO, 
 		                                                                     "force" => CATLIST_NSLINK_FORCE ));
-		$this->_checkOption($match, "noNSHeadTitle", $data['NsHeadTitle'], false);
-		if ($data['NsHeadTitle'] == false) 
-			$data['nsLinks'] = CATLIST_NSLINK_NONE;
 
 		// Exclude options
 		for ($found; preg_match("/-(exclu(page|ns|nsall|nspages|nsns)):\"([^\\/\"]+)\" /i", $match, $found); ) {
@@ -143,6 +148,7 @@ class syntax_plugin_catlist extends DokuWiki_Syntax_Plugin {
 
 		// Head options
 		$this->_checkOption($match, "noHead", $data['head'], false);
+		$this->_checkOption($match, "showHead", $data['head'], true);
 		$this->_checkOption($match, "smallHead", $data['smallHead'], true);
 		$this->_checkOption($match, "noLinkStartHead", $data['linkStartHead'], false);
 		if (preg_match("/-(h[1-5])/i", $match, $found)) {
@@ -170,6 +176,11 @@ class syntax_plugin_catlist extends DokuWiki_Syntax_Plugin {
 		
 		// Looking for the wanted namespace. Now, only the wanted namespace remains in $match. Then clean the namespace id
 		$ns = trim($match);
+		if ((boolean)$this->getConf('nswildcards')) {
+			global $ID;
+			$parsepagetemplate_data = array('id' => $ID, 'tpl' => $ns, 'doreplace' => true);
+			$ns = parsePageTemplate($parsepagetemplate_data);
+		}
 		if ($ns == '') $ns = '.'; // If there is nothing, we take the current namespace
 		global $ID;
 		if ($ns[0] == '.') $ns = getNS($ID).':'.$ns; // If it start with a '.', it is a relative path
@@ -231,15 +242,16 @@ class syntax_plugin_catlist extends DokuWiki_Syntax_Plugin {
 			return false;
 	}
 
+		/* Entry function for tree walking, called in render() */
 	function _walk (&$data) {
 		global $conf;
 			// Prepare
 		$ns = $data['ns'];
 		$path = $conf['savedir'].'/pages/'.str_replace(':', '/', $ns);
-		if ($conf['fnencode'] == 'safe')
-			$path = SafeFn::encode($path);
+		$path = utf8_encodeFN($path);
 		if (!is_dir($path)) {
-			msg(sprintf($this->getLang('dontexist'), $ns), -1);
+			if ($data['show_notfound_error'])
+				msg(sprintf($this->getLang('dontexist'), $ns), -1);
 			return false;
 		}
 			// Main page
@@ -250,8 +262,12 @@ class syntax_plugin_catlist extends DokuWiki_Syntax_Plugin {
 		if ($data['headTitle'] !== NULL) 
 			$main['title'] = $data['headTitle'];
 		else {
-			if ($main['exist']) $main['title'] = p_get_first_heading($main['id'], true);
-			if (is_null($main['title'])) $main['title'] = end(explode(':', $ns));
+			if ($data['useheading'] && $main['exist']) 
+				$main['title'] = p_get_first_heading($main['id'], true);
+			if (is_null($main['title'])) {
+				$ex = explode(':', $ns);
+				$main['title'] = end($ex);
+			}
 		}
 		$data['main'] = $main;
 			// Recursion
@@ -261,6 +277,7 @@ class syntax_plugin_catlist extends DokuWiki_Syntax_Plugin {
 		return true;
 	}
 
+		/* Recursive function for tree walking */
 	function _walk_recurse (&$data, $path, $ns, $excluPages, $excluNS, $depth, $maxdepth, &$_TREE) {
 		$scanDirs = @scandir($path, $data['scandir_sort']);
 		if ($scanDirs === false) {
@@ -283,7 +300,10 @@ class syntax_plugin_catlist extends DokuWiki_Syntax_Plugin {
 				if ($excluNS) continue;
 				if ($this->_isExcluded($item, $data['exclutype'], $data['excluns'])) continue;
 					// Namespace
-				$item['title'] = ($index_exists && $data['NsHeadTitle']) ? p_get_first_heading($index_id, true) : $name;
+				if ($index_exists && $data['nsuseheading']) 
+					$item['title'] = p_get_first_heading($index_id, true);
+				if (is_null($item['title']))
+					$item['title'] = $name;
 				$item['linkdisp'] = ($index_exists && ($data['nsLinks']==CATLIST_NSLINK_AUTO)) || ($data['nsLinks']==CATLIST_NSLINK_FORCE);
 				$item['linkid'] = $index_id;
 					// Button
@@ -303,8 +323,13 @@ class syntax_plugin_catlist extends DokuWiki_Syntax_Plugin {
 			if (!$excluPages) {
 				if (substr($file, -4) != ".txt") continue;
 					// Page title
-				$title = p_get_first_heading($id, true);
-				if (!is_null($title)) $item['title'] = $title;
+				if ($data['useheading']) {
+					$title = p_get_first_heading($id, true);
+					if (!is_null($title))
+						$item['title'] = $title;
+				}
+				if (is_null($item['title']))
+					$item['title'] = $name;
 					// Exclusion
 				if ($this->_isExcluded($item, $data['exclutype'], $data['exclupage'])) continue;
 					// Tree
@@ -316,7 +341,7 @@ class syntax_plugin_catlist extends DokuWiki_Syntax_Plugin {
 	/***********************************************************************************/
 	/************************************ Rendering ************************************/
 
-	function render ($mode, Doku_Renderer $renderer, $data) {		
+	function render ($mode, Doku_Renderer $renderer, $data) {
 		if (!is_array($data)) return false;
 		$ns = $data['ns'];
 
@@ -356,7 +381,7 @@ class syntax_plugin_catlist extends DokuWiki_Syntax_Plugin {
 		}
 		if ($data['displayType'] == CATLIST_DISPLAY_LIST) $renderer->doc .= '<ul '.$global_ul_attr.'>';
 		$this->_recurse($renderer, $data, $data['tree']);
-		$perm_create = auth_quickaclcheck($ns.':*') >= AUTH_CREATE;
+		$perm_create = $this->_cached_quickaclcheck($ns.':*') >= AUTH_CREATE;
 		$ns_button = ($ns == '') ? '' : $ns.':';
 		if ($data['createPageButtonNs'] && $perm_create) $this->_displayAddPageButton($renderer, $ns_button, $data['displayType']);
 		if ($data['displayType'] == CATLIST_DISPLAY_LIST) $renderer->doc .= '</ul>';
@@ -364,23 +389,58 @@ class syntax_plugin_catlist extends DokuWiki_Syntax_Plugin {
 		return true;
 	}
 	
+		/* Just cache the calls to auth_quickaclcheck, mainly for _any_child_perms */
+	function _cached_quickaclcheck($id) {
+		static $cache = array();
+		if (!isset($cache[$id]))
+			$cache[$id] = auth_quickaclcheck($id);
+		return $cache[$id];
+	}
+
+		/* Walk the tree to see if any page/namespace below this has read access access, for show_leading_ns option */
+	function _any_child_perms ($data, $_TREE) {
+		foreach ($_TREE as $item) {
+			if (isset($item['_'])) {
+				$perms = $this->_cached_quickaclcheck($item['id'].':*');
+				if ($perms >= AUTH_READ || $this->_any_child_perms($data, $item['_']))
+					return true;
+			} else {
+				$perms = $this->_cached_quickaclcheck($item['id']);
+				if ($perms >= AUTH_READ)
+					return true;
+			}
+		}
+		return false;
+	}
+
 	function _recurse (&$renderer, $data, $_TREE) {
 		foreach ($_TREE as $item) {
 			if (isset($item['_'])) {
 				// It's a namespace
-				$perms = auth_quickaclcheck($item['id'].':*');
-				if ($perms < AUTH_READ && $data['hide_nsnotr'] && !$data['show_perms']) continue;
+				$perms = $this->_cached_quickaclcheck($item['id'].':*');
+				$perms_exemption = $data['show_perms'];
+				// If we actually care about not showing the namespace because of permissions :
+				if ($perms < AUTH_READ && !$perms_exemption) {
+					// If show_leading_ns activated, walk the tree below this, see if any page/namespace below this has access
+					if ($data['show_leading_ns'] && $this->_any_child_perms($data, $item['_'])) {
+						$perms_exemption = true;
+					} else {
+						if ($data['hide_nsnotr']) continue;
+					}
+				}
 				$item['linkdisp'] = $item['linkdisp'] && ($perms >= AUTH_READ);
 				$item['buttonid'] = ($perms >= AUTH_CREATE) ? $item['buttonid'] : NULL;
 				$this->_displayNSBegin($renderer, $data, $item['title'], $item['linkdisp'], $item['linkid'], ($data['show_perms'] ? $perms : NULL));
-				if ($perms >= AUTH_READ)
+				if ($perms >= AUTH_READ || $perms_exemption) 
 					$this->_recurse($renderer, $data, $item['_']);
 				$this->_displayNSEnd($renderer, $data['displayType'], $item['buttonid']);
 			} else { 
 				// It's a page
-				$perms = auth_quickaclcheck($item['id']);
-				if ($perms < AUTH_READ && !$data['show_perms']) continue;
-				if ($data['hide_index'] && in_array($item['id'], $data['index_pages'])) continue;
+				$perms = $this->_cached_quickaclcheck($item['id']);
+				if ($perms < AUTH_READ && !$data['show_perms']) 
+					continue;
+				if ($data['hide_index'] && in_array($item['id'], $data['index_pages'])) 
+					continue;
 				$this->_displayPage($renderer, $item, $data['displayType'], ($data['show_perms'] ? $perms : NULL));
 			}
 		}

@@ -35,10 +35,9 @@ function catlist_button_add_page (element, ns) {
 		var pagename = addPageInput.value;
 		pagename = encodeURI(pagename);
 		if (typeof String.prototype.normalize === "function")
-    		pagename = pagename.normalize('NFD')
-		                   .replace(/[\u0300-\u036f]/g, ""); // eliminates diacritics
-		                   
-		pagename = pagename.replace(/[^a-zA-Z0-9._\-%]+/g, catlist_sepchar) // transforms characters not allowed as pagename in `catlist_sepchar`
+		pagename = pagename.normalize('NFD')
+		                   .replace(/[\u0300-\u036f]/g, ""); // eliminates diacritics            
+		pagename = pagename.replace(/[^a-zA-Z0-9._:-%]+/g, catlist_sepchar) // transforms characters not allowed as pagename in `catlist_sepchar`
 		                   .replace(/%(?![A-Fa-f0-9]{2})/, catlist_sepchar) // replace "%" if it is not the part of an URL encoded character
 		                   .replace(/^[._-]+/, "") // eliminates '.', '_' and '-' at the beginning and end
 		                   .replace(/[._-]+$/, "")
