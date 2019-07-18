@@ -355,7 +355,7 @@ class syntax_plugin_catlist extends DokuWiki_Syntax_Plugin {
 
 			// Write params for the add page button
 		global $conf;
-		$renderer->doc .= '<script type="text/javascript"> catlist_baseurl = "'.DOKU_URL.'"; catlist_basescript = "'.DOKU_SCRIPT.'"; catlist_useslash = '.$conf['useslash'].'; catlist_userewrite = '.$conf['userewrite'].'; catlist_sepchar = "'.$conf['sepchar'].'"; </script>';
+		$renderer->doc .= '<script type="text/javascript"> catlist_baseurl = "'.DOKU_URL.'"; catlist_basescript = "'.DOKU_SCRIPT.'"; catlist_useslash = '.$conf['useslash'].'; catlist_userewrite = '.$conf['userewrite'].'; catlist_sepchar = "'.$conf['sepchar'].'"; catlist_deaccent = '.$conf['deaccent'].'; </script>';
 
 			// Display headline
 		if ($data['head']) {
