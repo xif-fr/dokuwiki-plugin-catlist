@@ -26,11 +26,9 @@ define('CATLIST_INDEX_START', 0);
 define('CATLIST_INDEX_OUTSIDE', 1);
 define('CATLIST_INDEX_INSIDE', 2);
 
-if (!defined('SCANDIR_SORT_NONE')) {
-	define('SCANDIR_SORT_NONE', 0);
-	define('SCANDIR_SORT_ASCENDING', 0);
-	define('SCANDIR_SORT_DESCENDING', 1);
-}
+define('CATLIST_SORT_NONE', 0);
+define('CATLIST_SORT_ASCENDING', 1);
+define('CATLIST_SORT_DESCENDING', 2);
 
 class syntax_plugin_catlist extends DokuWiki_Syntax_Plugin {
 
@@ -65,9 +63,9 @@ class syntax_plugin_catlist extends DokuWiki_Syntax_Plugin {
 	function handle ($match, $state, $pos, Doku_Handler $handler) {
 		global $conf;
 
-		$_default_sort_map = array("none" => SCANDIR_SORT_NONE,
-		                           "ascending" => SCANDIR_SORT_ASCENDING,
-		                           "descending" => SCANDIR_SORT_DESCENDING);
+		$_default_sort_map = array("none" => CATLIST_SORT_NONE,
+		                           "ascending" => CATLIST_SORT_ASCENDING,
+		                           "descending" => CATLIST_SORT_DESCENDING);
 		$_index_priority_map = array("start" => CATLIST_INDEX_START,
 		                             "outside" => CATLIST_INDEX_OUTSIDE,
 		                             "inside" => CATLIST_INDEX_INSIDE);
@@ -81,7 +79,7 @@ class syntax_plugin_catlist extends DokuWiki_Syntax_Plugin {
 		              'useheading' => (boolean)$this->getConf('useheading'),
 		              'nsuseheading' => NULL, 'nsLinks' => CATLIST_NSLINK_AUTO,
 		              'columns' => 0, 'maxdepth' => 0,
-		              'scandir_sort' => $_default_sort_map[$this->getConf('default_sort')],
+		              'sort_order' => $_default_sort_map[$this->getConf('default_sort')], 'sort_by_title' => false, 'sort_by_type' => false,
 		              'hide_index' => (boolean)$this->getConf('hide_index'),
 		              'index_priority' => array(),
 		              'nocache' => (boolean)$this->getConf('nocache'),
@@ -165,8 +163,10 @@ class syntax_plugin_catlist extends DokuWiki_Syntax_Plugin {
 		$this->_checkOption($match, "addPageButtonEach", $data['createPageButtonSubs'], true);
 		
 		// Sorting options
-		$this->_checkOption($match, "sortAscending", $data['scandir_sort'], SCANDIR_SORT_ASCENDING);
-		$this->_checkOption($match, "sortDescending", $data['scandir_sort'], SCANDIR_SORT_DESCENDING);
+		$this->_checkOption($match, "sortAscending", $data['sort_order'], CATLIST_SORT_ASCENDING);
+		$this->_checkOption($match, "sortDescending", $data['sort_order'], CATLIST_SORT_DESCENDING);
+		$this->_checkOption($match, "sortByTitle", $data['sort_by_title'], true);
+		$this->_checkOption($match, "sortByType", $data['sort_by_type'], true);
 		
 		// Remove other options and warn about
 		for ($found; preg_match("/ (-.*)/", $match, $found); ) {
@@ -279,7 +279,7 @@ class syntax_plugin_catlist extends DokuWiki_Syntax_Plugin {
 
 		/* Recursive function for tree walking */
 	function _walk_recurse (&$data, $path, $ns, $excluPages, $excluNS, $depth, $maxdepth, &$_TREE) {
-		$scanDirs = @scandir($path, $data['scandir_sort']);
+		$scanDirs = @scandir($path, SCANDIR_SORT_NONE);
 		if ($scanDirs === false) {
 			msg("catlist: can't open directory of namespace ".$ns, -1);
 			return;
@@ -334,6 +334,18 @@ class syntax_plugin_catlist extends DokuWiki_Syntax_Plugin {
 				if ($this->_isExcluded($item, $data['exclutype'], $data['exclupage'])) continue;
 					// Tree
 				$_TREE[] = $item;
+			}
+			if ($data['sort_order'] != CATLIST_SORT_NONE) {
+				usort($_TREE, function ($a, $b) use ($data) {
+					if ($data['sort_by_type'] && ( isset($a['_']) xor isset($b['_']) )) 
+						return isset($b['_']);
+					$a_title = ($data['sort_by_title'] ? $a['title'] : $a['name']);
+					$b_title = ($data['sort_by_title'] ? $b['title'] : $b['name']);
+					$b = strcmp($a_title, $b_title);
+					if ($data['sort_order'] == CATLIST_SORT_DESCENDING)
+						$b = !$b;
+					return $b;
+				});
 			}
 		}
 	}
