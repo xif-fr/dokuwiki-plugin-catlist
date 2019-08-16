@@ -341,7 +341,7 @@ class syntax_plugin_catlist extends DokuWiki_Syntax_Plugin {
 						return isset($b['_']);
 					$a_title = ($data['sort_by_title'] ? $a['title'] : $a['name']);
 					$b_title = ($data['sort_by_title'] ? $b['title'] : $b['name']);
-					$b = strcmp($a_title, $b_title);
+					$b = strnatcasecmp($a_title, $b_title);
 					if ($data['sort_order'] == CATLIST_SORT_DESCENDING)
 						$b = !$b;
 					return $b;
