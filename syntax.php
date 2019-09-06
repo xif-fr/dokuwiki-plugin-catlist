@@ -247,7 +247,7 @@ class syntax_plugin_catlist extends DokuWiki_Syntax_Plugin {
 		global $conf;
 			// Prepare
 		$ns = $data['ns'];
-		$path = $conf['savedir'].'/pages/'.str_replace(':', '/', $ns);
+		$path = $conf['datadir'].'/'.str_replace(':', '/', $ns);
 		$path = utf8_encodeFN($path);
 		if (!is_dir($path)) {
 			if ($data['show_notfound_error'])
