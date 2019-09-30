@@ -83,7 +83,7 @@ class syntax_plugin_catlist extends DokuWiki_Syntax_Plugin {
 		              'hide_index' => (boolean)$this->getConf('hide_index'),
 		              'index_priority' => array(),
 		              'nocache' => (boolean)$this->getConf('nocache'),
-		              'hide_nsnotr' => (boolean)$this->getConf('hide_acl_nsnotr'), 'show_perms' => (boolean)$this->getConf('show_acl'),
+		              'hide_nsnotr' => (boolean)$this->getConf('hide_acl_nsnotr'), 'show_pgnoread' => false, 'show_perms' => (boolean)$this->getConf('show_acl'),
 		              'show_leading_ns' => (boolean)$this->getConf('show_leading_ns'),
 		              'show_notfound_error' => true );
 
@@ -167,6 +167,10 @@ class syntax_plugin_catlist extends DokuWiki_Syntax_Plugin {
 		$this->_checkOption($match, "sortDescending", $data['sort_order'], CATLIST_SORT_DESCENDING);
 		$this->_checkOption($match, "sortByTitle", $data['sort_by_title'], true);
 		$this->_checkOption($match, "sortByType", $data['sort_by_type'], true);
+
+		// ACL options
+		$this->_checkOption($match, "ACLshowPage", $data['show_pgnoread'], true);
+		$this->_checkOption($match, "ACLhideNs", $data['hide_nsnotr'], true);
 		
 		// Remove other options and warn about
 		for ($found; preg_match("/ (-.*)/", $match, $found); ) {
@@ -449,11 +453,12 @@ class syntax_plugin_catlist extends DokuWiki_Syntax_Plugin {
 			} else { 
 				// It's a page
 				$perms = $this->_cached_quickaclcheck($item['id']);
-				if ($perms < AUTH_READ && !$data['show_perms']) 
+				if ($perms < AUTH_READ && !$data['show_perms'] && !$data['show_pgnoread']) 
 					continue;
 				if ($data['hide_index'] && in_array($item['id'], $data['index_pages'])) 
 					continue;
-				$this->_displayPage($renderer, $item, $data['displayType'], ($data['show_perms'] ? $perms : NULL));
+				$displayLink = $perms >= AUTH_READ || $data['show_perms'];
+				$this->_displayPage($renderer, $item, $data['displayType'], ($data['show_perms'] ? $perms : NULL), $displayLink);
 			}
 		}
 	}
@@ -483,10 +488,11 @@ class syntax_plugin_catlist extends DokuWiki_Syntax_Plugin {
 		else if ($displayType == CATLIST_DISPLAY_LINE) $renderer->doc .= '] ';
 	}
 	
-	function _displayPage (&$renderer, $item, $displayType, $perms) {
+	function _displayPage (&$renderer, $item, $displayType, $perms, $displayLink) {
 		if ($displayType == CATLIST_DISPLAY_LIST) {
 			$renderer->doc .= '<li class="catlist-page">';
-			$renderer->internallink(':'.$item['id'], $item['title']);
+			if ($displayLink) $renderer->internallink(':'.$item['id'], $item['title']);
+			else $renderer->doc .= htmlspecialchars($item['title']);
 			if ($perms !== NULL) $renderer->doc .= ' [page, perm='.$perms.']';
 			$renderer->doc .= '</li>';
 		} else if ($displayType == CATLIST_DISPLAY_LINE) {
