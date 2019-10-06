@@ -438,15 +438,16 @@ class syntax_plugin_catlist extends DokuWiki_Syntax_Plugin {
 				// If we actually care about not showing the namespace because of permissions :
 				if ($perms < AUTH_READ && !$perms_exemption) {
 					// If show_leading_ns activated, walk the tree below this, see if any page/namespace below this has access
-					if ($data['show_leading_ns'] && $this->_any_child_perms($data, $item['_'])) {
+					//                               or force showing anyway the namespace if show_pgnoread is activated
+					if ($data['show_leading_ns'] && ( $data['show_pgnoread'] || $this->_any_child_perms($data, $item['_']) )) {
 						$perms_exemption = true;
 					} else {
 						if ($data['hide_nsnotr']) continue;
 					}
 				}
-				$item['linkdisp'] = $item['linkdisp'] && ($perms >= AUTH_READ);
+				$linkdisp = $item['linkdisp'] && ($perms >= AUTH_READ);
 				$item['buttonid'] = ($perms >= AUTH_CREATE) ? $item['buttonid'] : NULL;
-				$this->_displayNSBegin($renderer, $data, $item['title'], $item['linkdisp'], $item['linkid'], ($data['show_perms'] ? $perms : NULL));
+				$this->_displayNSBegin($renderer, $data, $item['title'], $linkdisp, $item['linkid'], ($data['show_perms'] ? $perms : NULL));
 				if ($perms >= AUTH_READ || $perms_exemption) 
 					$this->_recurse($renderer, $data, $item['_']);
 				$this->_displayNSEnd($renderer, $data['displayType'], $item['buttonid']);
