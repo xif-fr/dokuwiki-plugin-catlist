@@ -434,12 +434,11 @@ class syntax_plugin_catlist extends DokuWiki_Syntax_Plugin {
 			if (isset($item['_'])) {
 				// It's a namespace
 				$perms = $this->_cached_quickaclcheck($item['id'].':*');
-				$perms_exemption = $data['show_perms'];
+				$perms_exemption = $data['show_perms'] || $data['show_pgnoread'];
 				// If we actually care about not showing the namespace because of permissions :
 				if ($perms < AUTH_READ && !$perms_exemption) {
 					// If show_leading_ns activated, walk the tree below this, see if any page/namespace below this has access
-					//                               or force showing anyway the namespace if show_pgnoread is activated
-					if ($data['show_leading_ns'] && ( $data['show_pgnoread'] || $this->_any_child_perms($data, $item['_']) )) {
+					if ($data['show_leading_ns'] && $this->_any_child_perms($data, $item['_'])) {
 						$perms_exemption = true;
 					} else {
 						if ($data['hide_nsnotr']) continue;
