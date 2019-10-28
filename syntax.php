@@ -251,6 +251,7 @@ class syntax_plugin_catlist extends DokuWiki_Syntax_Plugin {
 		global $conf;
 			// Prepare
 		$ns = $data['ns'];
+		$this->_dynamicNSreplace($ns);
 		$path = $conf['datadir'].'/'.str_replace(':', '/', $ns);
 		$path = utf8_encodeFN($path);
 		if (!is_dir($path)) {
@@ -507,5 +508,10 @@ class syntax_plugin_catlist extends DokuWiki_Syntax_Plugin {
 		$html = ($displayType == CATLIST_DISPLAY_LIST) ? 'li' : 'span';
 		$renderer->doc .= '<'.$html.' class="catlist_addpage"><button class="button" onclick="catlist_button_add_page(this,\''.$ns.'\')">'.$this->getLang('addpage').'</button></'.$html.'>';
 	}
-	
+
+	function _dynamicNSreplace (&$ns) {
+ 		// update namespace to the one currently displayed
+ 		if($ns == '%%CURRENT_NAMESPACE%%')
+ 			$ns = getNS(cleanID(getID()));
+ 	}	
 }
