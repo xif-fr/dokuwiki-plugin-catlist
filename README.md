@@ -2,7 +2,7 @@
 
 Static tree-like page listing plugin for DokuWiki.
 
-For detailed description and documentation, see the (plugin page)[https://www.dokuwiki.org/plugin:catlist].
+For detailed description and documentation, see the [plugin page](https://www.dokuwiki.org/plugin:catlist).
 
 ### Contribution
 
