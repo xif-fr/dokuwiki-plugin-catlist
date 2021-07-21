@@ -234,6 +234,8 @@ class syntax_plugin_catlist extends DokuWiki_Syntax_Plugin {
 		global $conf;
 		if ((strlen($conf['hidepages']) != 0) && preg_match('/'.$conf['hidepages'].'/i', $item['id'])) return true;
 		foreach($arrayRegex as $regex) {
+			if (!is_array($regex)) // temporary, for transitioning to v2021-07-21
+				$regex = array('regex' => $regex, 'neg' => false);
 			$match = preg_match('/'.$regex['regex'].(($exclutype=='title')?'/':'/i'), $item[$exclutype]);
 			if ($regex['neg']) {
 				if ($match === 0)
@@ -280,7 +282,8 @@ class syntax_plugin_catlist extends DokuWiki_Syntax_Plugin {
 
 			// Get the directory path from namespace id, and check if it exists
 		$ns = $data['ns'];
-		$this->_dynamicNSreplace($ns);
+		if($ns == '%%CURRENT_NAMESPACE%%')
+			$ns = getNS(cleanID(getID())); // update namespace to the one currently displayed
 		$path = str_replace(':', '/', $ns);
 		$path = $conf['datadir'].'/'.utf8_encodeFN($path);
 		if (!is_dir($path)) {
@@ -307,7 +310,7 @@ class syntax_plugin_catlist extends DokuWiki_Syntax_Plugin {
 		$data['main'] = $main;
 
 			// Start the recursion
-		if (!isset($data['excludelist'])) 
+		if (!isset($data['excludelist'])) // temporary, for transitioning to v2021-07-21
 			$data['excludelist'] = array();
 		$data['tree'] = array();
 		$data['index_pages'] = array( $main['id'] );
@@ -564,9 +567,4 @@ class syntax_plugin_catlist extends DokuWiki_Syntax_Plugin {
 		$renderer->doc .= '<'.$html.' class="catlist_addpage"><button class="button" onclick="catlist_button_add_page(this,\''.$ns.'\')">'.$this->getLang('addpage').'</button></'.$html.'>';
 	}
 
-	function _dynamicNSreplace (&$ns) {
- 		// update namespace to the one currently displayed
- 		if($ns == '%%CURRENT_NAMESPACE%%')
- 			$ns = getNS(cleanID(getID()));
- 	}	
 }
