@@ -118,20 +118,32 @@ class syntax_plugin_catlist extends DokuWiki_Syntax_Plugin {
 		                                                                     "force" => CATLIST_NSLINK_FORCE ));
 
 		// Exclude options
-		for ($found; preg_match("/-(exclu(page|ns|nsall|nspages|nsns)):\"([^\\/\"]+)\" /i", $match, $found); ) {
-			$data[strtolower($found[1])][] = $found[3];
+		for ($found; preg_match("/-(exclu(page|ns|nsall|nspages|nsns)!?):\"([^\\/\"]+)\" /i", $match, $found); ) {
+			$option = strtolower($found[1]);
+			// is regex negated ?
+			if (substr($option,-1) == "!") {
+				$data[substr($option,0,-1)][] = array('regex' => $found[3], 'neg' => true);
+			} else {
+				$data[$option][] = array('regex' => $found[3], 'neg' => false);
+			}
 			$match = str_replace($found[0], '', $match);
 		}
 		for ($found; preg_match("/-(exclu(page|ns|nsall|nspages|nsns)) /i", $match, $found); ) {
 			$data[strtolower($found[1])] = true;
 			$match = str_replace($found[0], '', $match);
 		}
-		
 		// Exclude type (exclude based on id, name, or title)
 		$this->_checkOption($match, "excludeOnID", $data['exclutype'], 'id');
 		$this->_checkOption($match, "excludeOnName", $data['exclutype'], 'name');
 		$this->_checkOption($match, "excludeOnTitle", $data['exclutype'], 'title');
-		
+		// Exclude page/namespace id list
+		$data['excludelist'] = array();
+		for ($found; preg_match("/-exclude:\\{([^\\}]*)\\} /", $match, $found); ) {
+			$list = explode(' ', $found[1]); 
+			$data['excludelist'] = array_merge($data['excludelist'], $list);
+			$match = str_replace($found[0], '', $match);
+		}
+
 		// Max depth
 		if (preg_match("/-maxDepth:([0-9]+)/i", $match, $found)) {
 			$data['maxdepth'] = intval($found[1]);
@@ -212,13 +224,23 @@ class syntax_plugin_catlist extends DokuWiki_Syntax_Plugin {
 	/**************************************************************************************/
 	/************************************ Tree walking ************************************/
 
+		/* Utility function to check is a given page/namespace ($item) is excluded
+		 * based on the relevant list of blacklisting/whitelisting regexes $arrayRegex
+		 * ( array of array('regex'=>the_regex,'neg'=>false/true) ). The exclusion
+		 * is based on item title, full id or name ($exclutype).
+		 */
 	function _isExcluded ($item, $exclutype, $arrayRegex) {
 		if ($arrayRegex === true) return true;
 		global $conf;
 		if ((strlen($conf['hidepages']) != 0) && preg_match('/'.$conf['hidepages'].'/i', $item['id'])) return true;
 		foreach($arrayRegex as $regex) {
-			if (preg_match('/'.$regex.(($exclutype=='title')?'/':'/i'), $item[$exclutype])) {
-				return true;
+			$match = preg_match('/'.$regex['regex'].(($exclutype=='title')?'/':'/i'), $item[$exclutype]);
+			if ($regex['neg']) {
+				if ($match === 0)
+					return true;
+			} else {
+				if ($match === 1)
+					return true;
 			}
 		}
 		return false;
@@ -246,10 +268,17 @@ class syntax_plugin_catlist extends DokuWiki_Syntax_Plugin {
 			return false;
 	}
 
-		/* Entry function for tree walking, called in render() */
+		/* Entry function for tree walking, called in render()
+		 *
+		 * $data contains the various options initialized and parsed in handle(), and will be passed along
+		 * the tree walking. Moreover, $data['tree'] is filled by the pages found by _walk_recurse(), and
+		 * will contain the full tree, minus the excluded pages (however, permissions are only evaluated at
+		 * rendering time) and up to the max depth. _walk() prepares and start the tree walking.
+		 */
 	function _walk (&$data) {
 		global $conf;
-			// Prepare
+
+			// Get the directory path from namespace id, and check if it exists
 		$ns = $data['ns'];
 		$this->_dynamicNSreplace($ns);
 		$path = str_replace(':', '/', $ns);
@@ -259,7 +288,8 @@ class syntax_plugin_catlist extends DokuWiki_Syntax_Plugin {
 				msg(sprintf($this->getLang('dontexist'), $ns), -1);
 			return false;
 		}
-			// Main page
+
+			// Info on the main page (the "header" page)
 		$main = array( 'id' => $ns.':',
 		               'exist' => false,
 		               'title' => NULL );
@@ -275,15 +305,30 @@ class syntax_plugin_catlist extends DokuWiki_Syntax_Plugin {
 			}
 		}
 		$data['main'] = $main;
-			// Recursion
+
+			// Start the recursion
+		if (!isset($data['excludelist'])) 
+			$data['excludelist'] = array();
 		$data['tree'] = array();
 		$data['index_pages'] = array( $main['id'] );
-		$this->_walk_recurse($data, $path, $ns, false, false, 1, $data['maxdepth'], $data['tree'], $data['index_pages']);
+		$this->_walk_recurse($data, $path, $ns, "", false, false, 1/*root depth is 1*/, $data['tree']/*root*/);
 		return true;
 	}
 
-		/* Recursive function for tree walking */
-	function _walk_recurse (&$data, $path, $ns, $excluPages, $excluNS, $depth, $maxdepth, &$_TREE) {
+		/* Recursive function for tree walking.
+		 * 
+		 * Scans the current namespace by looking directly at the filesystem directory
+		 * for .txt files (pages) and sub-directories (namespaces). Excludes pages/namespaces
+		 * based on the various exclusion options. The current/local directory path, namesapce
+		 * ID and relative namespace ID are respectively $path, $ns and $relns.
+		 * $data is described above. $data['tree'] is not modified directly, but only through
+		 * $_TREE which is the *local* tree view (ie. a reference of a $data['tree'] node) and
+		 * where found children are added. Optionally sorts this list of children.
+		 * The local tree depth is $depth. $excluPages, $excluNS are flags indicates if the
+		 * sub-pages/namespaces should be excluded. Fills $data['index_pages'] with all
+		 * namespace IDs where an index has been found.
+		 */
+	function _walk_recurse (&$data, $path, $ns, $relns, $excluPages, $excluNS, $depth, &$_TREE) {
 		$scanDirs = @scandir($path, SCANDIR_SORT_NONE);
 		if ($scanDirs === false) {
 			msg("catlist: can't open directory of namespace ".$ns, -1);
@@ -293,7 +338,12 @@ class syntax_plugin_catlist extends DokuWiki_Syntax_Plugin {
 			if ($file[0] == '.' || $file[0] == '_') continue;
 			$name = utf8_decodeFN(str_replace('.txt', '', $file));
 			$id = ($ns == '') ? $name : $ns.':'.$name;
-			$item = array('id' => $id, 'name'  => $name, 'title' => NULL);
+			$rel_id = ($relns == '') ? $name : $relns.':'.$name;
+			$item = array('id' => $id, 'rel_id' => $rel_id, 'name' => $name, 'title' => NULL);
+
+				// ID exclusion
+			if (in_array($rel_id, $data['excludelist'])) continue;
+
 				// It's a namespace
 			if (is_dir($path.'/'.$file)) {
 					// Index page of the namespace
@@ -315,15 +365,18 @@ class syntax_plugin_catlist extends DokuWiki_Syntax_Plugin {
 				$item['buttonid'] = $data['createPageButtonSubs'] ? $id.':' : NULL;
 					// Recursion if wanted
 				$item['_'] = array();
-				$okdepth = ($depth < $maxdepth) || ($maxdepth == 0);
-				if (!$this->_isExcluded($item, $data['exclutype'], $data['exclunsall']) && $okdepth) {
+				$okdepth = ($depth < $data['maxdepth']) || ($data['maxdepth'] == 0);
+				$exclude_content = $this->_isExcluded($item, $data['exclutype'], $data['exclunsall'])
+				                   || in_array($rel_id.':', $data['excludelist']);
+				if (!$exclude_content && $okdepth) {
 					$exclunspages = $this->_isExcluded($item, $data['exclutype'], $data['exclunspages']);
 					$exclunsns = $this->_isExcluded($item, $data['exclutype'], $data['exclunsns']);
-					$this->_walk_recurse($data, $path.'/'.$file, $id, $exclunspages, $exclunsns, $depth+1, $maxdepth, $item['_']);
+					$this->_walk_recurse($data, $path.'/'.$file, $id, $rel_id, $exclunspages, $exclunsns, $depth+1, $item['_']);
 				}
 					// Tree
 				$_TREE[] = $item;
-			} else 
+			} else
+
 				// It's a page
 			if (!$excluPages) {
 				if (substr($file, -4) != ".txt") continue;
@@ -340,6 +393,8 @@ class syntax_plugin_catlist extends DokuWiki_Syntax_Plugin {
 					// Tree
 				$_TREE[] = $item;
 			}
+
+				// Sorting
 			if ($data['sort_order'] != CATLIST_SORT_NONE) {
 				usort($_TREE, function ($a, $b) use ($data) {
 					if ($data['sort_by_type'] && ( isset($a['_']) xor isset($b['_']) )) 
