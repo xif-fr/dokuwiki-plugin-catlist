@@ -10,3 +10,4 @@ $conf['useheading'] = true;
 $conf['showhead'] = true;
 $conf['show_leading_ns'] = false;
 $conf['nswildcards'] = false;
+$conf['pagename_sanitize'] = true;

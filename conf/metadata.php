@@ -10,3 +10,4 @@ $meta['useheading'] = array('onoff');
 $meta['showhead'] = array('onoff');
 $meta['show_leading_ns'] = array('onoff');
 $meta['nswildcards'] = array('onoff');
+$meta['pagename_sanitize'] = array('onoff');

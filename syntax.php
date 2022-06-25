@@ -73,7 +73,7 @@ class syntax_plugin_catlist extends DokuWiki_Syntax_Plugin {
 		$data = array('displayType' => CATLIST_DISPLAY_LIST, 'nsInBold' => true, 'expand' => 6,
 		              'exclupage' => array(), 'excluns' => array(), 'exclunsall' => array(), 'exclunspages' => array(), 'exclunsns' => array(),
 		              'exclutype' => 'id', 
-		              'createPageButtonNs' => true, 'createPageButtonSubs' => false, 
+		              'createPageButtonNs' => true, 'createPageButtonSubs' => false, 'pagename_sanitize' => (boolean)$this->getConf('pagename_sanitize'),
 		              'head' => (boolean)$this->getConf('showhead'),
 		              'headTitle' => NULL, 'smallHead' => false, 'linkStartHead' => true, 'hn' => 'h1',
 		              'useheading' => (boolean)$this->getConf('useheading'),
@@ -430,7 +430,7 @@ class syntax_plugin_catlist extends DokuWiki_Syntax_Plugin {
 
 			// Write params for the add page button
 		global $conf;
-		$renderer->doc .= '<script type="text/javascript"> catlist_baseurl = "'.DOKU_URL.'"; catlist_basescript = "'.DOKU_SCRIPT.'"; catlist_useslash = '.$conf['useslash'].'; catlist_userewrite = '.$conf['userewrite'].'; catlist_sepchar = "'.$conf['sepchar'].'"; catlist_deaccent = '.$conf['deaccent'].'; </script>';
+		$renderer->doc .= '<script type="text/javascript"> catlist_baseurl = "'.DOKU_URL.'"; catlist_basescript = "'.DOKU_SCRIPT.'"; catlist_useslash = '.$conf['useslash'].'; catlist_userewrite = '.$conf['userewrite'].'; catlist_sepchar = "'.$conf['sepchar'].'"; catlist_deaccent = '.$conf['deaccent'].'; catlist_pagename_sanitize = '.$data['pagename_sanitize'].'; </script>';
 
 			// Display headline
 		if ($data['head']) {
