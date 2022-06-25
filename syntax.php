@@ -267,9 +267,9 @@ class syntax_plugin_catlist extends DokuWiki_Syntax_Plugin {
 			}
 		}
 		if ($force && isset($index_priority[0])) 
-			return (false, $index_id_map[0], null);
+			return array(false, $index_id_map[0], null);
 		else
-			return (false, false, null);
+			return array(false, false, null);
 		// returns ($index_exists, $index_id, $index_filepath)
 	}
 
@@ -278,7 +278,7 @@ class syntax_plugin_catlist extends DokuWiki_Syntax_Plugin {
 		if (!isset($meta['date']['modified']))
 			$meta['date']['modified'] = @filemtime($filepath);
 		if (!isset($meta['contributor']))
-			$meta['contributor'] = $meta['creator']
+			$meta['contributor'] = $meta['creator'];
 		return $meta;
 	}
 
@@ -458,6 +458,8 @@ class syntax_plugin_catlist extends DokuWiki_Syntax_Plugin {
 
 			// Write params for the add page button
 		global $conf;
+		if (!isset($data['pagename_sanitize'])) // temporary, for transitioning to v2022-06-25
+			$data['pagename_sanitize'] = true;
 		$renderer->doc .= '<script type="text/javascript"> catlist_baseurl = "'.DOKU_URL.'"; catlist_basescript = "'.DOKU_SCRIPT.'"; catlist_useslash = '.$conf['useslash'].'; catlist_userewrite = '.$conf['userewrite'].'; catlist_sepchar = "'.$conf['sepchar'].'"; catlist_deaccent = '.$conf['deaccent'].'; catlist_pagename_sanitize = '.$data['pagename_sanitize'].'; </script>';
 
 			// Display headline
