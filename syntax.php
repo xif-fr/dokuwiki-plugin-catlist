@@ -79,7 +79,7 @@ class syntax_plugin_catlist extends DokuWiki_Syntax_Plugin {
 		              'useheading' => (boolean)$this->getConf('useheading'),
 		              'nsuseheading' => NULL, 'nsLinks' => CATLIST_NSLINK_AUTO,
 		              'columns' => 0, 'maxdepth' => 0,
-		              'sort_order' => $_default_sort_map[$this->getConf('default_sort')], 'sort_by_title' => false, 'sort_by_type' => false,
+		              'sort_order' => $_default_sort_map[$this->getConf('default_sort')], 'sort_by_title' => false, 'sort_by_type' => false, 'sort_by_date' => false,
 		              'hide_index' => (boolean)$this->getConf('hide_index'),
 		              'index_priority' => array(),
 		              'nocache' => (boolean)$this->getConf('nocache'),
@@ -179,11 +179,13 @@ class syntax_plugin_catlist extends DokuWiki_Syntax_Plugin {
 		$this->_checkOption($match, "sortDescending", $data['sort_order'], CATLIST_SORT_DESCENDING);
 		$this->_checkOption($match, "sortByTitle", $data['sort_by_title'], true);
 		$this->_checkOption($match, "sortByType", $data['sort_by_type'], true);
+		$this->_checkOption($match, "sortByCreationDate", $data['sort_by_date'], 'created');
+		$this->_checkOption($match, "sortByModifDate", $data['sort_by_date'], 'modified');
 
 		// ACL options
 		$this->_checkOption($match, "ACLshowPage", $data['show_pgnoread'], true);
 		$this->_checkOption($match, "ACLhideNs", $data['hide_nsnotr'], true);
-		
+
 		// Remove other options and warn about
 		for ($found; preg_match("/ (-.*)/", $match, $found); ) {
 			msg(sprintf($this->getLang('unknownoption'), htmlspecialchars($found[1])), -1);
@@ -248,7 +250,7 @@ class syntax_plugin_catlist extends DokuWiki_Syntax_Plugin {
 		return false;
 	}
 
-	function _getStartPage ($index_priority, $parid, $parpath, $name, $force, &$exists) {
+	function _getStartPage ($index_priority, $parid, $parpath, $name, $force) {
 		$exists = false;
 		if ($parid != '') $parid .= ':';
 		global $conf;
@@ -261,13 +263,23 @@ class syntax_plugin_catlist extends DokuWiki_Syntax_Plugin {
 		foreach ($index_priority as $index_type) {
 			if (is_file($index_path_map[$index_type])) {
 				$exists = true;
-				return $index_id_map[$index_type];
+				return array(true, $index_id_map[$index_type], $index_path_map[$index_type]);
 			}
 		}
 		if ($force && isset($index_priority[0])) 
-			return $index_id_map[0];
+			return (false, $index_id_map[0], null);
 		else
-			return false;
+			return (false, false, null);
+		// returns ($index_exists, $index_id, $index_filepath)
+	}
+
+	function _getMetadata ($id, $filepath) {
+		$meta = p_get_metadata($id, $key='', $render=METADATA_RENDER_USING_SIMPLE_CACHE);
+		if (!isset($meta['date']['modified']))
+			$meta['date']['modified'] = @filemtime($filepath);
+		if (!isset($meta['contributor']))
+			$meta['contributor'] = $meta['creator']
+		return $meta;
 	}
 
 		/* Entry function for tree walking, called in render()
@@ -350,16 +362,18 @@ class syntax_plugin_catlist extends DokuWiki_Syntax_Plugin {
 				// It's a namespace
 			if (is_dir($path.'/'.$file)) {
 					// Index page of the namespace
-				$index_exists = false;
-				$index_id = $this->_getStartPage($data['index_priority'], $ns, $path, $name, ($data['nsLinks']==CATLIST_NSLINK_FORCE), $index_exists);
+				list($index_exists, $index_id, $index_filepath) = $this->_getStartPage($data['index_priority'], $ns, $path, $name, ($data['nsLinks']==CATLIST_NSLINK_FORCE));
 				if ($index_exists)
 					$data['index_pages'][] = $index_id;
 					// Exclusion
 				if ($excluNS) continue;
 				if ($this->_isExcluded($item, $data['exclutype'], $data['excluns'])) continue;
 					// Namespace
-				if ($index_exists && $data['nsuseheading']) 
-					$item['title'] = p_get_first_heading($index_id, true);
+				if ($index_exists) {
+					$item['metadata'] = $this->_getMetadata($index_id, $index_filepath);
+					if ($data['nsuseheading'])
+						$item['title'] = $item['metadata']['title'];
+				}
 				if (is_null($item['title']))
 					$item['title'] = $name;
 				$item['linkdisp'] = ($index_exists && ($data['nsLinks']==CATLIST_NSLINK_AUTO)) || ($data['nsLinks']==CATLIST_NSLINK_FORCE);
@@ -384,8 +398,9 @@ class syntax_plugin_catlist extends DokuWiki_Syntax_Plugin {
 			if (!$excluPages) {
 				if (substr($file, -4) != ".txt") continue;
 					// Page title
+				$item['metadata'] = $this->_getMetadata($id, $file);
 				if ($data['useheading']) {
-					$title = p_get_first_heading($id, true);
+					$title = $item['metadata']['title'];
 					if (!is_null($title))
 						$item['title'] = $title;
 				}
@@ -400,11 +415,24 @@ class syntax_plugin_catlist extends DokuWiki_Syntax_Plugin {
 				// Sorting
 			if ($data['sort_order'] != CATLIST_SORT_NONE) {
 				usort($_TREE, function ($a, $b) use ($data) {
-					if ($data['sort_by_type'] && ( isset($a['_']) xor isset($b['_']) )) 
-						return isset($b['_']);
-					$a_title = ($data['sort_by_title'] ? $a['title'] : $a['name']);
-					$b_title = ($data['sort_by_title'] ? $b['title'] : $b['name']);
-					$r = strnatcasecmp($a_title, $b_title);
+					$a_is_folder = isset($a['_']);
+					$b_is_folder = isset($b['_']);
+					// if one or the other is folder, comparison is done
+					if ($data['sort_by_type'] && ($a_is_folder xor $b_is_folder )) 
+						return $b_is_folder;
+					// else, compare date or name
+					if ($data['sort_by_date'] === false) {
+						// by name
+						$a_title = ($data['sort_by_title'] ? $a['title'] : $a['name']);
+						$b_title = ($data['sort_by_title'] ? $b['title'] : $b['name']);
+						$r = strnatcasecmp($a_title, $b_title);
+					} else {
+						// by date
+						$field = $data['sort_by_date'];
+						$a_date = (isset($a['metadata']['date'][$field]) ? $a['metadata']['date'][$field] : 0);
+						$b_date = (isset($b['metadata']['date'][$field]) ? $b['metadata']['date'][$field] : 0);
+						$r = $a_date <=> $b_date;
+					}
 					if ($data['sort_order'] == CATLIST_SORT_DESCENDING)
 						$r *= -1;
 					return $r;
