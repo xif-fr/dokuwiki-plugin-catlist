@@ -11,3 +11,4 @@ $lang['showhead'] = "Show headline by default; individual override with -noHead 
 $lang['show_leading_ns'] = "Show leading namespaces to a page for which a user has ACL Read regardless of user ACLs on namespace.";
 $lang['nswildcards'] = "Replace wildcards in the namespace string as for page templates.";
 $lang['pagename_sanitize'] = "Sanitize the page name of pages created by the 'Add page' button. When this is enabled, the feature respects the 'deaccent', 'userewrite', 'useslash' and 'sepchar' configuration options.";
+$lang['sort_collator_locale'] = "Locale used to sort page names. When not empty, PHP Collator class is used; should be a valid locale short code. When empty, plain alphanumeric sorting is used.";

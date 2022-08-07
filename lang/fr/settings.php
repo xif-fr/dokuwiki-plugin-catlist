@@ -11,3 +11,4 @@ $lang['showhead'] = "Afficher le titre par défaut; remplacement individuel avec
 $lang['show_leading_ns'] = "Affiche le namespace si il existe un élément fils pour lequel l'utilisateur a la permission de lecture.";
 $lang['nswildcards'] = "Remplace les jetons de la forme '@...@' comme pour les modèles de pages.";
 $lang['pagename_sanitize'] = "Nettoie le nom des pages créées par le bouton d'ajout de pages. Lorsque activé, cette fonctionnalité respecte les options de configuration 'deaccent', 'userewrite', 'useslash' et 'sepchar'.";
+$lang['sort_collator_locale'] = "Locale utilisée pour trier les noms de page. La classe PHP Collator est utilisée pour faire le tri lorsqu'une locale est fournie (par exemple 'fr_FR'). Sinon, un tri alphanumérique basique est utilisé.";

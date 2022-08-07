@@ -79,7 +79,8 @@ class syntax_plugin_catlist extends DokuWiki_Syntax_Plugin {
 		              'useheading' => (boolean)$this->getConf('useheading'),
 		              'nsuseheading' => NULL, 'nsLinks' => CATLIST_NSLINK_AUTO,
 		              'columns' => 0, 'maxdepth' => 0,
-		              'sort_order' => $_default_sort_map[$this->getConf('default_sort')], 'sort_by_title' => false, 'sort_by_type' => false, 'sort_by_date' => false,
+		              'sort_order' => $_default_sort_map[$this->getConf('default_sort')], 
+		              'sort_by_title' => false, 'sort_by_type' => false, 'sort_by_date' => false, 'sort_collator' => $this->getConf('sort_collator_locale'),
 		              'hide_index' => (boolean)$this->getConf('hide_index'),
 		              'index_priority' => array(),
 		              'nocache' => (boolean)$this->getConf('nocache'),
@@ -321,6 +322,22 @@ class syntax_plugin_catlist extends DokuWiki_Syntax_Plugin {
 		}
 		$data['main'] = $main;
 
+			// Preparing other stuff
+		if ($data['sort_collator'] == "")
+			$data['sort_collator'] = NULL;
+		else {
+			$locale = $data['sort_collator'];
+			$coll = collator_create($locale);
+			if (!isset($coll)) {
+				msg("catlist sorting: can't create Collator object: ".intl_get_error_message(), -1);
+				$data['sort_collator'] = NULL;
+			} else {
+				$coll->setAttribute(Collator::CASE_FIRST, Collator::UPPER_FIRST);
+				$coll->setAttribute(Collator::NUMERIC_COLLATION, Collator::ON);
+				$data['sort_collator'] = $coll;
+			}
+		}
+
 			// Start the recursion
 		if (!isset($data['excludelist'])) // temporary, for transitioning to v2021-07-21
 			$data['excludelist'] = array();
@@ -423,7 +440,10 @@ class syntax_plugin_catlist extends DokuWiki_Syntax_Plugin {
 						// by name
 						$a_title = ($data['sort_by_title'] ? $a['title'] : $a['name']);
 						$b_title = ($data['sort_by_title'] ? $b['title'] : $b['name']);
-						$r = strnatcasecmp($a_title, $b_title);
+						if (!is_null($data['sort_collator'])) 
+							$r = $data['sort_collator']->compare($a_title, $b_title);
+						else
+							$r = strnatcasecmp($a_title, $b_title);
 					} else {
 						// by date
 						$field = $data['sort_by_date'];

@@ -11,3 +11,4 @@ $meta['showhead'] = array('onoff');
 $meta['show_leading_ns'] = array('onoff');
 $meta['nswildcards'] = array('onoff');
 $meta['pagename_sanitize'] = array('onoff');
+$meta['sort_collator_locale'] = array('string');  // Note : the list of locales could be retreived by https://www.php.net/manual/en/resourcebundle.locales.php
