@@ -323,7 +323,7 @@ class syntax_plugin_catlist extends DokuWiki_Syntax_Plugin {
 		$data['main'] = $main;
 
 			// Preparing other stuff
-		if ($data['sort_collator'] == "")
+		if (!isset($data['sort_collator']) || $data['sort_collator'] == "")
 			$data['sort_collator'] = NULL;
 		else {
 			$locale = $data['sort_collator'];
