@@ -215,7 +215,7 @@ class syntax_plugin_catlist extends DokuWiki_Syntax_Plugin {
 				} else break;
 			}
 		}
-		if ($split[0] == '..') {
+		if (count($split) > 0 && $split[0] == '..') {
 			// Path would be outside the 'pages' directory
 			msg($this->getLang('outofpages'), -1);
 			return false;
