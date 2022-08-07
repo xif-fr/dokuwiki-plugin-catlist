@@ -371,7 +371,7 @@ class syntax_plugin_catlist extends DokuWiki_Syntax_Plugin {
 					// Namespace
 				if ($index_exists) {
 					$item['metadata'] = $this->_getMetadata($index_id, $index_filepath);
-					if ($data['nsuseheading'])
+					if ($data['nsuseheading'] && isset($item['metadata']['title']))
 						$item['title'] = $item['metadata']['title'];
 				}
 				if (is_null($item['title']))
@@ -399,10 +399,8 @@ class syntax_plugin_catlist extends DokuWiki_Syntax_Plugin {
 				if (substr($file, -4) != ".txt") continue;
 					// Page title
 				$item['metadata'] = $this->_getMetadata($id, $file);
-				if ($data['useheading']) {
-					$title = $item['metadata']['title'];
-					if (!is_null($title))
-						$item['title'] = $title;
+				if ($data['useheading'] && isset($item['metadata']['title'])) {
+					$item['title'] = $item['metadata']['title'];
 				}
 				if (is_null($item['title']))
 					$item['title'] = $name;
