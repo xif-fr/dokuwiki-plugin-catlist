@@ -7,6 +7,8 @@
  *
  */
 
+use dokuwiki\Utf8\PhpString;
+
 if (!defined('DOKU_INC')) die('meh.');
 
 define('CATLIST_DISPLAY_LIST', 1);
@@ -90,7 +92,7 @@ class syntax_plugin_catlist extends DokuWiki_Syntax_Plugin {
 			}
 			$data['index_priority'][] = $_index_priority_map[$index_type];
 		}
-		$match = utf8_substr($match, 9, -1).' ';
+		$match = PhpString::substr($match, 9, -1) . ' ';
 		
 		// Display options
 		$this->_checkOption($match, "displayList", $data['displayType'], CATLIST_DISPLAY_LIST);
