@@ -7,6 +7,7 @@
  *
  */
 
+use dokuwiki\File\PageResolver;
 use dokuwiki\Utf8\PhpString;
 
 if (!defined('DOKU_INC')) die('meh.');
@@ -302,10 +303,12 @@ class syntax_plugin_catlist extends DokuWiki_Syntax_Plugin {
 		}
 
 			// Info on the main page (the "header" page)
-		$main = array( 'id' => $ns.':',
-		               'exist' => false,
+		$id = $ns . ':';
+		$resolver = new PageResolver($id);
+		$id = $resolver->resolveId($id);
+		$main = array( 'id' => $id,
+		               'exist' => page_exists($id),
 		               'title' => NULL );
-		resolve_pageid('', $main['id'], $main['exist']);
 		if ($data['headTitle'] !== NULL) 
 			$main['title'] = $data['headTitle'];
 		else {
