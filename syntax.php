@@ -9,12 +9,6 @@
 
 if (!defined('DOKU_INC')) die('meh.');
 
-if (!defined('DOKU_PLUGIN')) define('DOKU_PLUGIN', DOKU_INC.'lib/plugins/');
-require_once(DOKU_PLUGIN.'syntax.php');
-require_once(DOKU_INC.'inc/search.php');
-require_once(DOKU_INC.'inc/pageutils.php');
-require_once(DOKU_INC.'inc/parserutils.php');
-
 define('CATLIST_DISPLAY_LIST', 1);
 define('CATLIST_DISPLAY_LINE', 2);
 
