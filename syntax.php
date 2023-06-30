@@ -7,13 +7,10 @@
  *
  */
 
-if (!defined('DOKU_INC')) die('meh.');
+use dokuwiki\File\PageResolver;
+use dokuwiki\Utf8\PhpString;
 
-if (!defined('DOKU_PLUGIN')) define('DOKU_PLUGIN', DOKU_INC.'lib/plugins/');
-require_once(DOKU_PLUGIN.'syntax.php');
-require_once(DOKU_INC.'inc/search.php');
-require_once(DOKU_INC.'inc/pageutils.php');
-require_once(DOKU_INC.'inc/parserutils.php');
+if (!defined('DOKU_INC')) die('meh.');
 
 define('CATLIST_DISPLAY_LIST', 1);
 define('CATLIST_DISPLAY_LINE', 2);
@@ -96,7 +93,7 @@ class syntax_plugin_catlist extends DokuWiki_Syntax_Plugin {
 			}
 			$data['index_priority'][] = $_index_priority_map[$index_type];
 		}
-		$match = utf8_substr($match, 9, -1).' ';
+		$match = PhpString::substr($match, 9, -1) . ' ';
 		
 		// Display options
 		$this->_checkOption($match, "displayList", $data['displayType'], CATLIST_DISPLAY_LIST);
@@ -306,10 +303,12 @@ class syntax_plugin_catlist extends DokuWiki_Syntax_Plugin {
 		}
 
 			// Info on the main page (the "header" page)
-		$main = array( 'id' => $ns.':',
-		               'exist' => false,
+		$id = $ns . ':';
+		$resolver = new PageResolver($id);
+		$id = $resolver->resolveId($id);
+		$main = array( 'id' => $id,
+		               'exist' => page_exists($id),
 		               'title' => NULL );
-		resolve_pageid('', $main['id'], $main['exist']);
 		if ($data['headTitle'] !== NULL) 
 			$main['title'] = $data['headTitle'];
 		else {
