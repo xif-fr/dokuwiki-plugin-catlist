@@ -294,6 +294,8 @@ class syntax_plugin_catlist extends DokuWiki_Syntax_Plugin {
 		$ns = $data['ns'];
 		if($ns == '%%CURRENT_NAMESPACE%%')
 			$ns = getNS(cleanID(getID())); // update namespace to the one currently displayed
+		if($ns == '%%CURRENT_PAGE%%')
+			$ns = cleanID(getID()); // this is used when pages are single pages instead of namespaces
 		$path = str_replace(':', '/', $ns);
 		$path = $conf['datadir'].'/'.utf8_encodeFN($path);
 		if (!is_dir($path)) {
