@@ -6,9 +6,9 @@ For detailed description and documentation, see the [plugin page](https://www.do
 
 ### Contribution
 
-Do what you want. Any help to add features or refactor the code is welcomed. The only requirement is backwards compatibility and some consistence.
+Do what you want. Any help to add features or refactor the code is welcome. The only requirement is backwards compatibility and some consistence.
 
-The plugin is not actively developped, but still maintained. Some features are and may be added if it is not too much work.
+The plugin is not actively developped, but still somewhat maintained. Some features may be added if it is not too much work. As I'm not a user of DokuWiki anymore, I'm looking for a new maintainer for this plugin. Please step in if you're interested.
 
 ### Security
 
