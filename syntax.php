@@ -292,8 +292,6 @@ class syntax_plugin_catlist extends DokuWiki_Syntax_Plugin {
 
 			// Get the directory path from namespace id, and check if it exists
 		$ns = $data['ns'];
-		if($ns == '%%CURRENT_NAMESPACE%%')
-			$ns = getNS(cleanID(getID())); // update namespace to the one currently displayed
 		$path = str_replace(':', '/', $ns);
 		$path = $conf['datadir'].'/'.utf8_encodeFN($path);
 		if (!is_dir($path)) {
@@ -463,6 +461,9 @@ class syntax_plugin_catlist extends DokuWiki_Syntax_Plugin {
 
 	function render ($mode, Doku_Renderer $renderer, $data) {
 		if (!is_array($data)) return false;
+
+		if ($data['ns'] == '%%CURRENT_NAMESPACE%%')
+			$data['ns'] = getNS(cleanID(getID())); // update namespace to the one currently displayed
 		$ns = $data['ns'];
 
 			// Disabling cache
@@ -505,8 +506,10 @@ class syntax_plugin_catlist extends DokuWiki_Syntax_Plugin {
 		$this->_recurse($renderer, $data, $data['tree']);
 		$perm_create = $this->_cached_quickaclcheck($ns.':*') >= AUTH_CREATE;
 		$ns_button = ($ns == '') ? '' : $ns.':';
-		if ($data['createPageButtonNs'] && $perm_create) $this->_displayAddPageButton($renderer, $ns_button, $data['displayType']);
-		if ($data['displayType'] == CATLIST_DISPLAY_LIST) $renderer->doc .= '</ul>';
+		if ($data['createPageButtonNs'] && $perm_create)
+			$this->_displayAddPageButton($renderer, $ns_button, $data['displayType']);
+		if ($data['displayType'] == CATLIST_DISPLAY_LIST)
+			$renderer->doc .= '</ul>';
 		
 		return true;
 	}
@@ -553,7 +556,8 @@ class syntax_plugin_catlist extends DokuWiki_Syntax_Plugin {
 					}
 				}
 				$linkdisp = $item['linkdisp'] && ($perms >= AUTH_READ);
-				$item['buttonid'] = ($perms >= AUTH_CREATE) ? $item['buttonid'] : NULL;
+				if ($perms < AUTH_CREATE) 
+					$item['buttonid'] = NULL;
 				$this->_displayNSBegin($renderer, $data, $item['title'], $linkdisp, $item['linkid'], ($data['show_perms'] ? $perms : NULL));
 				if ($perms >= AUTH_READ || $perms_exemption) 
 					$this->_recurse($renderer, $data, $item['_']);
