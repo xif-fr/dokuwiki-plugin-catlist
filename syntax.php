@@ -482,6 +482,7 @@ class syntax_plugin_catlist extends DokuWiki_Syntax_Plugin {
 
 			// Display headline
 		if ($data['head']) {
+			$perms = $this->_cached_quickaclcheck($ns.':*');
 			$html_tag_small = ($data['nsInBold']) ? 'strong' : 'span';
 			$html_tag = ($data['smallHead']) ? $html_tag_small : $data['hn'];
 			$renderer->doc .= '<'.$html_tag.' class="catlist-head">';
@@ -489,7 +490,7 @@ class syntax_plugin_catlist extends DokuWiki_Syntax_Plugin {
 			if (($main['exist'] && $data['linkStartHead'] && !($data['nsLinks']==CATLIST_NSLINK_NONE)) || ($data['nsLinks']==CATLIST_NSLINK_FORCE)) 
 				$renderer->internallink(':'.$main['id'], $main['title']);
 			else 
-				$renderer->doc .= htmlspecialchars($main['title']);
+				if ($perms >= AUTH_READ) $renderer->doc .= htmlspecialchars($main['title']);
 			$renderer->doc .= '</'.$html_tag.'>';
 		}
 		
