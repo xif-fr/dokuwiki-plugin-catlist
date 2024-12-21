@@ -275,8 +275,6 @@ class syntax_plugin_catlist extends DokuWiki_Syntax_Plugin {
 		$meta = p_get_metadata($id, $key='', $render=METADATA_RENDER_USING_SIMPLE_CACHE);
 		if (!isset($meta['date']['modified']))
 			$meta['date']['modified'] = @filemtime($filepath);
-		if (!isset($meta['contributor']))
-			$meta['contributor'] = $meta['creator'];
 		return $meta;
 	}
 
